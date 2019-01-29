@@ -36,6 +36,24 @@ for dependency in curl jq awk voms-proxy-info; do
     type $dependency >/dev/null || fail "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
+secureOnly=0
+
+while getopts "h?s" opt; do
+    case "$opt" in
+	h|\?)
+	    echo "$0 [-s] URL"
+	    exit 0
+	    ;;
+	s)
+	    secureOnly=1
+	    ;;
+    esac
+done
+
+shift $((OPTIND-1))
+
+[ "${1:-}" = "--" ] && shift
+
 if [ $# -ne 1 ]; then
     fail "Need exactly one argument: the webdav endpoint; e.g., https://webdav.example.org:2881/path/to/dir"
 fi
@@ -96,19 +114,21 @@ echo
 echo "THIRD PARTY PULL TESTS"
 echo
 
-echo "Initiating an unauthenticated HTTP PULL, authn with X.509 to target..."
-echo -e -n "$DIM"
-$CURL_X509 -X COPY -H 'Credential: none' -H "Source: $THIRDPARTY_UNAUTHENTICATED_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
+if [ $secureOnly = 0 ]; then
+    echo "Initiating an unauthenticated HTTP PULL, authn with X.509 to target..."
+    echo -e -n "$DIM"
+    $CURL_X509 -X COPY -H 'Credential: none' -H "Source: $THIRDPARTY_UNAUTHENTICATED_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
 
-echo -n "Deleting target with X.509: "
-$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    echo -n "Deleting target with X.509: "
+    $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
-echo "Initiating an unauthenticated HTTP PULL, authz with macaroon to target..."
-echo -e -n "$DIM"
-eval $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
+    echo "Initiating an unauthenticated HTTP PULL, authz with macaroon to target..."
+    echo -e -n "$DIM"
+    eval $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
 
-echo -n "Deleting target with macaroon: "
-eval $CURL_MACAROON -# -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    echo -n "Deleting target with macaroon: "
+    eval $CURL_MACAROON -# -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+fi
 
 echo -n "Requesting DOWNLOAD macaroon for private file: "
 tmp=$(mktemp)
