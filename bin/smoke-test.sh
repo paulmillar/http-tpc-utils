@@ -32,6 +32,19 @@ cleanup() {
     echo -e "$RESET"
 }
 
+checkCopy() {
+    lastLine="$(tail -1 $COPY_OUTPUT)"
+
+    echo -e -n "${RESET}Third party copy: "
+    if [ "${lastLine#success:}" != "${lastLine}" ]; then
+	success
+    elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
+	fail "Transfer failed: ${lastLine#failure:}"
+    else
+	fail "Transfer failed for an unknown reason"
+    fi
+}
+
 for dependency in curl jq awk voms-proxy-info; do
     type $dependency >/dev/null || fail "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
@@ -71,8 +84,10 @@ PROXY=/tmp/x509up_u$(id -u)
 
 
 VERBOSE=$(mktemp)
-FILES_TO_DELETE=$VERBOSE
+COPY_OUTPUT=$(mktemp)
+FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT"
 trap cleanup EXIT
+
 
 CURL_BASE="curl --verbose -s -f -L --capath /etc/grid-security/certificates"
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
@@ -117,14 +132,20 @@ echo
 if [ $secureOnly = 0 ]; then
     echo "Initiating an unauthenticated HTTP PULL, authn with X.509 to target..."
     echo -e -n "$DIM"
-    $CURL_X509 -X COPY -H 'Credential: none' -H "Source: $THIRDPARTY_UNAUTHENTICATED_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
+    $CURL_X509 -X COPY -H 'Credential: none' -H "Source: $THIRDPARTY_UNAUTHENTICATED_URL" $FILE_URL 2>$VERBOSE \
+	| tee $COPY_OUTPUT \
+	|| fail "COPY request failed" \
+        && checkCopy
 
     echo -n "Deleting target with X.509: "
     $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
     echo "Initiating an unauthenticated HTTP PULL, authz with macaroon to target..."
     echo -e -n "$DIM"
-    eval $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
+    eval $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE \
+	| tee $COPY_OUTPUT \
+	|| fail "COPY request failed" \
+        && checkCopy
 
     echo -n "Deleting target with macaroon: "
     eval $CURL_MACAROON -# -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
@@ -138,14 +159,20 @@ THIRDPARTY_DOWNLOAD_MACAROON=$(cat $tmp)
 
 echo "Initiating a macaroon authz HTTP PULL, authn with X.509 to target..."
 echo -e -n "$DIM"
-$CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON" -H "Source: $THIRDPARTY_PRIVATE_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
+$CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON" -H "Source: $THIRDPARTY_PRIVATE_URL" $FILE_URL 2>$VERBOSE \
+	| tee $COPY_OUTPUT \
+	|| fail "COPY request failed" \
+        && checkCopy
 
 echo -n "Deleting target with X.509: "
 $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo "Initiating a macaroon authz HTTP PULL, authz with macaroon to target..."
 echo -e -n "$DIM"
-eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
+eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL 2>$VERBOSE \
+	| tee $COPY_OUTPUT \
+	|| fail "COPY request failed" \
+        && checkCopy
 
 echo -n "Deleting target with macaroon: "
 eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
@@ -169,18 +196,23 @@ $CURL_X509 -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed"
 
 echo "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target..."
 echo -e -n "$DIM"
-$CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON" -H "Destination: $THIRDPARTY_UPLOAD_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed"  && (echo -e -n "${RESET}Third party copy: "; success)
+$CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON" -H "Destination: $THIRDPARTY_UPLOAD_URL" $FILE_URL 2>$VERBOSE \
+	| tee $COPY_OUTPUT \
+	|| fail "COPY request failed" \
+        && checkCopy
 
 echo -n "Deleting file pushed to third party, with X.509: "
 $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target..."
 echo -e -n "$DIM"
-eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
+eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL 2>$VERBOSE \
+	| tee $COPY_OUTPUT \
+	|| fail "COPY request failed" \
+        && checkCopy
 
 echo -n "Deleting file pushed to third party, with X.509: "
 $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo -n "Deleting target with X.509: "
 $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
-
