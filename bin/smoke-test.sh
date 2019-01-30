@@ -57,7 +57,7 @@ FILES_TO_DELETE=$VERBOSE
 trap cleanup EXIT
 
 CURL_BASE="curl --verbose -s -f -L --capath /etc/grid-security/certificates"
-CURL_X509="$CURL_BASE -E $PROXY"
+CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
 
 FILE_URL=$URL/smoke-test-$(uname -n)-$$
 
