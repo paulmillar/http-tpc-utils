@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-#  Simple tests to verify endpoint is ready
+#  Simple tests to verify endpoint is ready for DOMA-TPC
 #
 
 THIRDPARTY_UNAUTHENTICATED_URL=https://prometheus.desy.de:2443/Video/BlenderFoundation/Sintel.webm
@@ -13,9 +13,10 @@ RED="\e[31m"
 
 fail() {
     echo -e "$RED$@$RESET"
-    if [ -f $VERBOSE ]; then
+    if [ -f "$VERBOSE" ]; then
         echo -e "\nVerbose output from curl:"
-	awk '{print "    "$0}' < $VERBOSE
+	awk '{if ($0 ~ /HTTP\/1.1/){colour="\x1B[0m"}else{colour="\x1B[2m"}print "    "colour$0}' < $VERBOSE
+	echo -e "$RESET"
     fi
     exit 1
 }
@@ -28,6 +29,10 @@ success() {
 cleanup() {
     rm -f $FILES_TO_DELETE
 }
+
+for dependency in curl jq awk; do
+    type $dependency >/dev/null || fail "Missing dependency \"$dependency\".  Please install a package that provides this command."
+done
 
 if [ $# -ne 1 ]; then
     fail "Need exactly one argument: the webdav endpoint; e.g., https://webdav.example.org:2881/path/to/dir"
