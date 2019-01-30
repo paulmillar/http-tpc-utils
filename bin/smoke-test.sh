@@ -156,7 +156,7 @@ $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Dele
 
 echo "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target..."
 echo -e -n "$DIM"
-eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "Third party copy: "; success)
+eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
 
 echo -n "Deleting file pushed to third party, with X.509: "
 $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
