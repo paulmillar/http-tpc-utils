@@ -32,7 +32,7 @@ cleanup() {
     echo -e "$RESET"
 }
 
-for dependency in curl jq awk; do
+for dependency in curl jq awk voms-proxy-info; do
     type $dependency >/dev/null || fail "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
