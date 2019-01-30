@@ -29,6 +29,7 @@ success() {
 
 cleanup() {
     rm -f $FILES_TO_DELETE
+    echo -e "$RESET"
 }
 
 for dependency in curl jq awk; do
