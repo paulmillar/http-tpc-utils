@@ -72,7 +72,7 @@ echo -n "Downloading from target with X.509 authn: "
 $CURL_X509 -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
 
 echo -n "Deleting target with X.509 authn: "
-$CURL_X509 -X DELETE $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
 tmp=$(mktemp)
@@ -89,7 +89,7 @@ echo -n "Downloading from target with macaroon authz: "
 eval $CURL_MACAROON -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
 
 echo -n "Deleting target with macaroon authz: "
-eval $CURL_MACAROON -X DELETE $FILE_URL  2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE || fail "Delete failed" && success
 
 echo
 echo "THIRD PARTY PULL TESTS"
@@ -100,14 +100,14 @@ echo -e -n "$DIM"
 $CURL_X509 -X COPY -H 'Credential: none' -H "Source: $THIRDPARTY_UNAUTHENTICATED_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
 
 echo -n "Deleting target with X.509: "
-$CURL_X509 -X DELETE $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo "Initiating an unauthenticated HTTP PULL, authz with macaroon to target..."
 echo -e -n "$DIM"
 eval $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
 
 echo -n "Deleting target with macaroon: "
-eval $CURL_MACAROON -# -X DELETE $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_MACAROON -# -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo -n "Requesting DOWNLOAD macaroon for private file: "
 tmp=$(mktemp)
@@ -120,14 +120,14 @@ echo -e -n "$DIM"
 $CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON" -H "Source: $THIRDPARTY_PRIVATE_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
 
 echo -n "Deleting target with X.509: "
-$CURL_X509 -X DELETE $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo "Initiating a macaroon authz HTTP PULL, authz with macaroon to target..."
 echo -e -n "$DIM"
 eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "${RESET}Third party copy: "; success)
 
 echo -n "Deleting target with macaroon: "
-eval $CURL_MACAROON -X DELETE $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo
 echo "THIRD PARTY PUSH TESTS"
@@ -151,15 +151,15 @@ echo -e -n "$DIM"
 $CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON" -H "Destination: $THIRDPARTY_UPLOAD_URL" $FILE_URL 2>$VERBOSE || fail "Copy failed"  && (echo -e -n "${RESET}Third party copy: "; success)
 
 echo -n "Deleting file pushed to third party, with X.509: "
-$CURL_X509 -X DELETE $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
+$CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target..."
 echo -e -n "$DIM"
 eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL 2>$VERBOSE || fail "Copy failed" && (echo -e -n "Third party copy: "; success)
 
 echo -n "Deleting file pushed to third party, with X.509: "
-$CURL_X509 -X DELETE $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
+$CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo -n "Deleting target with X.509: "
-$CURL_X509 -X DELETE $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
