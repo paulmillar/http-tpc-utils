@@ -44,8 +44,9 @@ checkCopy() {
 
     echo -e -n "${RESET}Third party copy: "
     # REVISIT: shouldn't this be standardised?
-    if [ "${lastLine#success}" != "${lastLine}" \
-            -o "${lastLine#Success}" != "${lastLine}" ]; then
+    if [ "${lastLine#success}" != "${lastLine}" ]; then
+	success
+    elif [ "${lastLine#Success}" != "${lastLine}" ]; then # for DPM compatibility
 	success
     elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
 	fail "Transfer failed: ${lastLine#failure:}"
@@ -98,7 +99,7 @@ FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT"
 trap cleanup EXIT
 
 CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -s -f -L --capath /etc/grid-security/certificates"
-CURL_BASE="$CURL_BASE -H 'X-No-Delegate: 1'"  # Tell DPM not to request GridSite delegation.
+CURL_BASE="$CURL_BASE -H 'X-No-Delegate: true'"  # Tell DPM not to request GridSite delegation.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
 CURL_X509="$CURL_X509 -H 'Credential: none'"  # Tell dCache not to request GridSite delegation.
 
