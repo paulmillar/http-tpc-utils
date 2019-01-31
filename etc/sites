@@ -11,8 +11,8 @@ UKI-LT2-IC-HEP           https://gfe02.grid.hep.ph.ic.ac.uk:2880/pnfs/hep.ph.ic.
 CERN EOS                 https://eosppshttp.cern.ch:443/eos/opstest
 INFN-T1                  https://gridhttps-storm-atlas.cr.cnaf.infn.it:8443/dteam
 UKI-LT2-QMUL             https://se01.esc.qmul.ac.uk:8443/dteam
-NABRASKA                 https://red-gridftp12.unl.edu:1094/user/dteam
-NABRASKA2                https://xrootd-local.unl.edu:1094/user/dteam
+NEBRASKA                 https://red-gridftp12.unl.edu:1094/user/dteam
+NEBRASKA2                https://xrootd-local.unl.edu:1094/user/dteam
 FNAL                     https://stkendca06a.fnal.gov:2880/pnfs/fnal.gov/VOs/dteam
 BEIJING-LCG2		 https://ccsrm.ihep.ac.cn/dpm/ihep.ac.cn/home/dteam
 DYNA-CERN-CLOUD		 https://dynafed-atlas.cern.ch/data/cloud/tpc
