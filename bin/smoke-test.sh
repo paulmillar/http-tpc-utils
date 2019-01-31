@@ -43,7 +43,9 @@ checkCopy() {
     lastLine="$(tail -1 $COPY_OUTPUT)"
 
     echo -e -n "${RESET}Third party copy: "
-    if [ "${lastLine#success:}" != "${lastLine}" ]; then
+    # REVISIT: shouldn't this be standardised?
+    if [ "${lastLine#success}" != "${lastLine}" \
+            -o "${lastLine#Success}" != "${lastLine}" ]; then
 	success
     elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
 	fail "Transfer failed: ${lastLine#failure:}"
