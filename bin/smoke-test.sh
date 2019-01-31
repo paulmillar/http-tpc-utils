@@ -42,6 +42,10 @@ cleanup() {
 checkCopy() {
     lastLine="$(tail -1 $COPY_OUTPUT)"
 
+    # Insert newline if server COPY didn't include one (xrootd)
+    c=$(tail -c 1 $COPY_OUTPUT)
+    [ "$c" != "" ] && echo
+
     echo -e -n "${RESET}Third party copy: "
     # REVISIT: shouldn't this be standardised?
     if [ "${lastLine#success}" != "${lastLine}" ]; then
