@@ -126,7 +126,7 @@ echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
 target_macaroon=$(mktemp)
 macaroon_json=$(mktemp)
 FILES_TO_DELETE="$FILES_TO_DELETE $target_macaroon $macaroon_json"
-eval $CURL_X509 -# -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:DOWNLOAD,UPLOAD,DELETE\"]}\' -o$macaroon_json $FILE_URL 2>$VERBOSE || fail "Macaroon request failed."
+eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:DOWNLOAD,UPLOAD,DELETE\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $FILE_URL 2>$VERBOSE || fail "Macaroon request failed."
 jq -r .macaroon $macaroon_json >$target_macaroon || fail "Badly formatted JSON"
 TARGET_MACAROON="$(cat $target_macaroon)"
 [ "$TARGET_MACAROON" != "null" ] || fail "Missing 'macaroon' element" && success
