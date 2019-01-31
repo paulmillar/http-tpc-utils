@@ -7,6 +7,13 @@ THIRDPARTY_UNAUTHENTICATED_URL=https://prometheus.desy.de:2443/Video/BlenderFoun
 THIRDPARTY_PRIVATE_URL=https://prometheus.desy.de:2443/VOs/dteam/private-file
 THIRDPARTY_UPLOAD_BASE_URL=https://prometheus.desy.de:2443/VOs/dteam
 
+CONNECT_TIMEOUT=60  # value in seconds
+
+## Drop transfer if average bandwidth over SPEED_TIME is less than
+## SPEED_LIMIT.
+SPEED_TIME=15       # value in seconds
+SPEED_LIMIT=1024    # value in bytes per second
+
 RESET="\e[0m"
 DIM="\e[2m"
 GREEN="\e[32m"
@@ -88,8 +95,7 @@ COPY_OUTPUT=$(mktemp)
 FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT"
 trap cleanup EXIT
 
-
-CURL_BASE="curl --verbose -s -f -L --capath /etc/grid-security/certificates"
+CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT --speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT -s -f -L --capath /etc/grid-security/certificates"
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
 
 FILE_URL=$URL/smoke-test-$(uname -n)-$$
