@@ -97,10 +97,12 @@ COPY_OUTPUT=$(mktemp)
 FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT"
 trap cleanup EXIT
 
-CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT --speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT -s -f -L --capath /etc/grid-security/certificates"
+CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -s -f -L --capath /etc/grid-security/certificates"
 CURL_BASE="$CURL_BASE -H 'X-No-Delegate: 1'"  # Tell DPM not to request GridSite delegation.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
 CURL_X509="$CURL_X509 -H 'Credential: none'"  # Tell dCache not to request GridSite delegation.
+
+MUST_MAKE_PROGRESS="--speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT"
 
 FILE_URL=$URL/smoke-test-$(uname -n)-$$
 
@@ -111,10 +113,10 @@ echo "DIRECT TRANSFER TESTS"
 echo
 
 echo -n "Uploading to target with X.509 authn: "
-eval $CURL_X509 -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
 
 echo -n "Downloading from target with X.509 authn: "
-eval $CURL_X509 -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
+eval $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
 
 echo -n "Deleting target with X.509 authn: "
 eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
@@ -131,10 +133,10 @@ TARGET_MACAROON="$(cat $target_macaroon)"
 CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
 
 echo -n "Uploading to target with macaroon authz: "
-eval $CURL_MACAROON -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+eval $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
 
 echo -n "Downloading from target with macaroon authz: "
-eval $CURL_MACAROON -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
+eval $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
 
 echo -n "Deleting target with macaroon authz: "
 eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE || fail "Delete failed" && success
@@ -206,7 +208,7 @@ eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{
 THIRDPARTY_UPLOAD_MACAROON=$(cat $tmp)
 
 echo -n "Uploading target, authn with X.509: "
-eval $CURL_X509 -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
 
 echo "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target..."
 echo -e -n "$DIM"
