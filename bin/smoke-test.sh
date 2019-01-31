@@ -96,7 +96,9 @@ FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT"
 trap cleanup EXIT
 
 CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT --speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT -s -f -L --capath /etc/grid-security/certificates"
+CURL_BASE="$CURL_BASE -H 'X-No-Delegate: 1'"  # Tell DPM not to request GridSite delegation.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
+CURL_X509="$CURL_X509 -H 'Credential: none'"  # Tell dCache not to request GridSite delegation.
 
 FILE_URL=$URL/smoke-test-$(uname -n)-$$
 
@@ -105,22 +107,22 @@ echo "Target: $FILE_URL"
 echo
 echo "DIRECT TRANSFER TESTS"
 echo
+
 echo -n "Uploading to target with X.509 authn: "
-$CURL_X509 -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+eval $CURL_X509 -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
 
 echo -n "Downloading from target with X.509 authn: "
-$CURL_X509 -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
+eval $CURL_X509 -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
 
 echo -n "Deleting target with X.509 authn: "
-$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
-tmp=$(mktemp)
-FILES_TO_DELETE="$FILES_TO_DELETE $tmp"
-$CURL_X509 -# -X POST -H 'Content-Type: application/macaroon-request' -d '{"caveats": ["activity:DOWNLOAD,UPLOAD,DELETE"]}' $FILE_URL  2>$VERBOSE | jq -r .macaroon >$tmp || fail "Macaroon request failed." && success
-TARGET_MACAROON=$(cat $tmp)
+target_macaroon=$(mktemp)
+FILES_TO_DELETE="$FILES_TO_DELETE $target_macaroon"
+eval $CURL_X509 -# -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:DOWNLOAD,UPLOAD,DELETE\"]}\' $FILE_URL 2>$VERBOSE | jq -r .macaroon >$target_macaroon || fail "Macaroon request failed." && success
 
-CURL_MACAROON="$CURL_BASE -H \"Authorization: bearer $TARGET_MACAROON\""
+CURL_MACAROON="$CURL_BASE -H \"Authorization: bearer $(cat $target_macaroon)\""
 
 echo -n "Uploading to target with macaroon authz: "
 eval $CURL_MACAROON -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
@@ -138,13 +140,13 @@ echo
 if [ $secureOnly = 0 ]; then
     echo "Initiating an unauthenticated HTTP PULL, authn with X.509 to target..."
     echo -e -n "$DIM"
-    $CURL_X509 -X COPY -H 'Credential: none' -H "Source: $THIRDPARTY_UNAUTHENTICATED_URL" $FILE_URL 2>$VERBOSE \
+    eval $CURL_X509 -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE \
 	| tee $COPY_OUTPUT \
 	|| fail "COPY request failed" \
         && checkCopy
 
     echo -n "Deleting target with X.509: "
-    $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
     echo "Initiating an unauthenticated HTTP PULL, authz with macaroon to target..."
     echo -e -n "$DIM"
@@ -154,24 +156,24 @@ if [ $secureOnly = 0 ]; then
         && checkCopy
 
     echo -n "Deleting target with macaroon: "
-    eval $CURL_MACAROON -# -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 fi
 
 echo -n "Requesting DOWNLOAD macaroon for private file: "
 tmp=$(mktemp)
 FILES_TO_DELETE="$FILES_TO_DELETE $tmp"
-$CURL_X509 -X POST -H 'Content-Type: application/macaroon-request' -d '{"caveats": ["activity:DOWNLOAD"]}' $THIRDPARTY_PRIVATE_URL 2>$VERBOSE | jq -r .macaroon > $tmp || fail "Macaroon request failed." && success
+eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:DOWNLOAD\"]}\' $THIRDPARTY_PRIVATE_URL 2>$VERBOSE | jq -r .macaroon > $tmp || fail "Macaroon request failed." && success
 THIRDPARTY_DOWNLOAD_MACAROON=$(cat $tmp)
 
 echo "Initiating a macaroon authz HTTP PULL, authn with X.509 to target..."
 echo -e -n "$DIM"
-$CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON" -H "Source: $THIRDPARTY_PRIVATE_URL" $FILE_URL 2>$VERBOSE \
+eval $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\' -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL 2>$VERBOSE \
 	| tee $COPY_OUTPUT \
 	|| fail "COPY request failed" \
         && checkCopy
 
 echo -n "Deleting target with X.509: "
-$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo "Initiating a macaroon authz HTTP PULL, authz with macaroon to target..."
 echo -e -n "$DIM"
@@ -194,21 +196,21 @@ echo
 echo -n "Requesting UPLOAD macaroon to third party push target: "
 tmp=$(mktemp)
 FILES_TO_DELETE="$FILES_TO_DELETE $tmp"
-$CURL_X509 -X POST -H 'Content-Type: application/macaroon-request' -d '{"caveats": ["activity:UPLOAD"]}' $THIRDPARTY_UPLOAD_URL 2>$VERBOSE | jq -r .macaroon > $tmp || fail "Macaroon request failed." && success
+eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:UPLOAD\"]}\' $THIRDPARTY_UPLOAD_URL 2>$VERBOSE | jq -r .macaroon > $tmp || fail "Macaroon request failed." && success
 THIRDPARTY_UPLOAD_MACAROON=$(cat $tmp)
 
 echo -n "Uploading target, authn with X.509: "
-$CURL_X509 -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+eval $CURL_X509 -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
 
 echo "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target..."
 echo -e -n "$DIM"
-$CURL_X509 -X COPY -H 'Credential: none' -H "TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON" -H "Destination: $THIRDPARTY_UPLOAD_URL" $FILE_URL 2>$VERBOSE \
+eval $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\' -H \'Destination: $THIRDPARTY_UPLOAD_URL\' $FILE_URL 2>$VERBOSE \
 	| tee $COPY_OUTPUT \
 	|| fail "COPY request failed" \
         && checkCopy
 
 echo -n "Deleting file pushed to third party, with X.509: "
-$CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target..."
 echo -e -n "$DIM"
@@ -218,7 +220,7 @@ eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY
         && checkCopy
 
 echo -n "Deleting file pushed to third party, with X.509: "
-$CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
 
 echo -n "Deleting target with X.509: "
-$CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
