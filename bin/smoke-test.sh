@@ -18,20 +18,34 @@ RESET="\e[0m"
 DIM="\e[2m"
 GREEN="\e[32m"
 RED="\e[31m"
+YELLOW="\e[33m"
 
 fail() {
-    echo -e "$RESET$RED$@$RESET"
-    if [ -f "$VERBOSE" ]; then
+    echo -e "$RESET${RED}FAILED: $@$RESET"
+    if [ -f "$VERBOSE" -a $fullRun -eq 0 ]; then
         echo -e "\nVerbose output from curl:"
 	awk '{if ($0 ~ /HTTP\/1.1/){colour="\x1B[0m"}else{colour="\x1B[2m"}print "    "colour$0}' < $VERBOSE
 	echo -e "$RESET"
     fi
+    if [ $fullRun -eq 0 ]; then
+	exit 1
+    fi
+    lastTestFailed=1
+}
+
+fatal() {
+    fail "$@"
     exit 1
 }
 
 success() {
     echo -e "${GREEN}SUCCESS$RESET"
     rm -f $VERBOSE
+    lastTestFailed=0
+}
+
+skipped() {
+    echo -e "$RESET${YELLOW}SKIPPED: $@$RESET"
 }
 
 cleanup() {
@@ -39,40 +53,109 @@ cleanup() {
     echo -e "$RESET"
 }
 
-checkCopy() {
-    lastLine="$(tail -1 $COPY_OUTPUT)"
-
-    # Insert newline if server COPY didn't include one (xrootd)
-    c=$(tail -c 1 $COPY_OUTPUT)
-    [ "$c" != "" ] && echo
-
-    echo -e -n "${RESET}Third party copy: "
-    # REVISIT: shouldn't this be standardised?
-    if [ "${lastLine#success}" != "${lastLine}" ]; then
+checkResult() {
+    if [ $? -eq 0 ]; then
 	success
-    elif [ "${lastLine#Success}" != "${lastLine}" ]; then # for DPM compatibility
-	success
-    elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
-	fail "Transfer failed: ${lastLine#failure:}"
     else
-	fail "Transfer failed for an unknown reason"
+	fail "$1"
+    fi
+
+    shift
+
+    for var in "$@"; do
+	eval $var=$lastTestFailed
+    done
+}
+
+checkFailure() {
+    if [ $? -ne 0 ]; then
+	fail "$1"
+    fi
+
+    shift
+
+    for var in "$@"; do
+	eval $var=$lastTestFailed
+    done
+}
+
+runCopy() {
+    if [ $fullRun -eq 1 ]; then
+	echo -n ": "
+	eval "$@" 2>$VERBOSE >$COPY_OUTPUT
+    else
+	echo -e -n "...\n$DIM"
+	eval "$@" 2>$VERBOSE | tee $COPY_OUTPUT
+    fi
+    checkCopy
+}
+
+checkCopy() {
+    if [ $fullRun -ne 1 ]; then
+	echo -e -n "${RESET}Third party copy: "
+    fi
+
+    if [ $? -ne 0 ]; then
+	fail "COPY request failed"
+    else
+	lastLine="$(tail -1 $COPY_OUTPUT)"
+
+	# Insert newline if server COPY didn't include one (xrootd)
+	c=$(tail -c 1 $COPY_OUTPUT)
+	[ "$c" != "" ] && echo
+
+	# REVISIT: shouldn't this be standardised?
+	if [ "${lastLine#success}" != "${lastLine}" ]; then
+	    success
+	elif [ "${lastLine#Success}" != "${lastLine}" ]; then # for DPM compatibility
+	    success
+	elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
+	    fail "${lastLine#failure:}"
+	else
+	    fail "for an unknown reason"
+	fi
     fi
 }
 
+
+requestMacaroon() { # $1 Caveats, $2 URL, $3 target variable
+    local target_macaroon=$(mktemp)
+    local macaroon_json=$(mktemp)
+    local macaroon
+    FILES_TO_DELETE="$FILES_TO_DELETE $target_macaroon $macaroon_json"
+
+    lastTestFailed=0
+
+    eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
+    checkFailure "Macaroon request failed." $4
+    if [ $lastTestFailed -eq 0 ]; then
+	jq -r .macaroon $macaroon_json >$target_macaroon
+	checkFailure "Badly formatted JSON" $4
+    fi
+    if [ $lastTestFailed -eq 0 ]; then
+	macaroon="$(cat $target_macaroon)"
+	[ "$TARGET_MACAROON" != "null" ]
+	checkResult "Missing 'macaroon' element" $4
+    fi
+
+    eval $3="$macaroon"
+}
+
 for dependency in curl jq awk voms-proxy-info; do
-    type $dependency >/dev/null || fail "Missing dependency \"$dependency\".  Please install a package that provides this command."
+    type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-secureOnly=0
-
-while getopts "h?s" opt; do
+fullRun=0
+while getopts "h?f" opt; do
     case "$opt" in
 	h|\?)
-	    echo "$0 [-s] URL"
+	    echo "$0 [-f] URL"
+	    echo
+	    echo "-f  Do not stop on first error"
 	    exit 0
 	    ;;
-	s)
-	    secureOnly=1
+	f)
+	    fullRun=1
 	    ;;
     esac
 done
@@ -82,17 +165,17 @@ shift $((OPTIND-1))
 [ "${1:-}" = "--" ] && shift
 
 if [ $# -ne 1 ]; then
-    fail "Need exactly one argument: the webdav endpoint; e.g., https://webdav.example.org:2881/path/to/dir"
+    fatal "Need exactly one argument: the webdav endpoint; e.g., https://webdav.example.org:2881/path/to/dir"
 fi
 
 if [ "${1#https://}" = "$1" ]; then
-    fail "URL must start https://"
+    fatal "URL must start https://"
 fi
 
 URL=${1%/}
 
-voms-proxy-info -e >/dev/null 2>&1 || fail "Need valid X.509 proxy"
-voms-proxy-info --acexists dteam 2>/dev/null || fail "X.509 proxy does not assert dteam membership"
+voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
+voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
 
 PROXY=/tmp/x509up_u$(id -u)
 
@@ -118,85 +201,127 @@ echo "DIRECT TRANSFER TESTS"
 echo
 
 echo -n "Uploading to target with X.509 authn: "
-eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+checkResult "Upload failed" uploadFailed
 
 echo -n "Downloading from target with X.509 authn: "
-eval $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
+if [ $uploadFailed -eq 0 ]; then
+    eval $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "Download failed"
+else
+    skipped "upload failed"
+fi
 
 echo -n "Deleting target with X.509 authn: "
-eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+if [ $uploadFailed -eq 0 ]; then
+    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "Delete failed"
+else
+    skipped "upload failed"
+fi
 
 echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
-target_macaroon=$(mktemp)
-macaroon_json=$(mktemp)
-FILES_TO_DELETE="$FILES_TO_DELETE $target_macaroon $macaroon_json"
-eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:DOWNLOAD,UPLOAD,DELETE\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $FILE_URL 2>$VERBOSE || fail "Macaroon request failed."
-jq -r .macaroon $macaroon_json >$target_macaroon || fail "Badly formatted JSON"
-TARGET_MACAROON="$(cat $target_macaroon)"
-[ "$TARGET_MACAROON" != "null" ] || fail "Missing 'macaroon' element" && success
+requestMacaroon DOWNLOAD,UPLOAD,DELETE $FILE_URL TARGET_MACAROON macaroonFailed
 
 CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
 
 echo -n "Uploading to target with macaroon authz: "
-eval $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+if [ $macaroonFailed -eq 0 ]; then
+    eval $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "Upload failed" uploadFailed
+else
+    skipped "no macaroon"
+fi
 
 echo -n "Downloading from target with macaroon authz: "
-eval $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE || fail "Download failed" && success
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "no macaroon"
+elif [ $uploadFailed -eq 1 ]; then
+    skipped "upload failed"
+else
+    eval $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "Download failed"
+fi
 
 echo -n "Deleting target with macaroon authz: "
-eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE || fail "Delete failed" && success
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "no macaroon"
+elif [ $uploadFailed -eq 1 ]; then
+    skipped "upload failed"
+else
+    eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
+    checkResult "Delete failed"
+fi
 
 echo
 echo "THIRD PARTY PULL TESTS"
 echo
 
-if [ $secureOnly = 0 ]; then
-    echo "Initiating an unauthenticated HTTP PULL, authn with X.509 to target..."
-    echo -e -n "$DIM"
-    eval $CURL_X509 -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE \
-	| tee $COPY_OUTPUT \
-	|| fail "COPY request failed" \
-        && checkCopy
+echo -n "Initiating an unauthenticated HTTP PULL, authn with X.509 to target"
+runCopy $CURL_X509 -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
 
-    echo -n "Deleting target with X.509: "
+echo -n "Deleting target with X.509: "
+if [ $lastTestFailed -eq 1 ]; then
+    skipped "upload failed"
+else
     eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+fi
 
-    echo "Initiating an unauthenticated HTTP PULL, authz with macaroon to target..."
-    echo -e -n "$DIM"
-    eval $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL 2>$VERBOSE \
-	| tee $COPY_OUTPUT \
-	|| fail "COPY request failed" \
-        && checkCopy
+echo -n "Initiating an unauthenticated HTTP PULL, authz with macaroon to target"
+if [ $macaroonFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "no macaroon"
+else
+    runCopy $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
+fi
 
-    echo -n "Deleting target with macaroon: "
+echo -n "Deleting target with macaroon: "
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "macaroon failed"
+elif [ $lastTestFailed -eq 1 ]; then
+    skipped "upload failed"
+else
     eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 fi
 
-echo -n "Requesting DOWNLOAD macaroon for private file: "
-tmp=$(mktemp)
-FILES_TO_DELETE="$FILES_TO_DELETE $tmp"
-eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:DOWNLOAD\"]}\' $THIRDPARTY_PRIVATE_URL 2>$VERBOSE | jq -r .macaroon > $tmp || fail "Macaroon request failed." && success
-THIRDPARTY_DOWNLOAD_MACAROON=$(cat $tmp)
+echo -n "Requesting (from prometheus) DOWNLOAD macaroon for private file on: "
+requestMacaroon DOWNLOAD $THIRDPARTY_PRIVATE_URL THIRDPARTY_DOWNLOAD_MACAROON tpcDownloadMacaroonFailed
 
-echo "Initiating a macaroon authz HTTP PULL, authn with X.509 to target..."
-echo -e -n "$DIM"
-eval $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\' -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL 2>$VERBOSE \
-	| tee $COPY_OUTPUT \
-	|| fail "COPY request failed" \
-        && checkCopy
+echo -n "Initiating a macaroon authz HTTP PULL, authn with X.509 to target"
+if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "no TPC macaroon"
+else
+    runCopy $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\' -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
+fi
 
 echo -n "Deleting target with X.509: "
-eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+    skipped "no TPC macaroon"
+elif [ $lastTestFailed -eq 1 ]; then
+    skipped "third-party transfer failed"
+else
+    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult
+fi
 
-echo "Initiating a macaroon authz HTTP PULL, authz with macaroon to target..."
-echo -e -n "$DIM"
-eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL 2>$VERBOSE \
-	| tee $COPY_OUTPUT \
-	|| fail "COPY request failed" \
-        && checkCopy
+echo -n "Initiating a macaroon authz HTTP PULL, authz with macaroon to target"
+if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "no TPC macaroon"
+else
+    runCopy $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
+fi
 
 echo -n "Deleting target with macaroon: "
-eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+    skipped "no TPC macaroon"
+elif [ $lastTestFailed -eq 1 ]; then
+    skipped "third-party transfer failed"
+else
+    eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult
+fi
 
 echo
 echo "THIRD PARTY PUSH TESTS"
@@ -206,34 +331,75 @@ THIRDPARTY_UPLOAD_URL=$THIRDPARTY_UPLOAD_BASE_URL/smoke-test-push-$(uname -n)-$$
 
 echo "Third party push target: $THIRDPARTY_UPLOAD_URL"
 echo
-echo -n "Requesting UPLOAD macaroon to third party push target: "
-tmp=$(mktemp)
-FILES_TO_DELETE="$FILES_TO_DELETE $tmp"
-eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:UPLOAD\"]}\' $THIRDPARTY_UPLOAD_URL 2>$VERBOSE | jq -r .macaroon > $tmp || fail "Macaroon request failed." && success
-THIRDPARTY_UPLOAD_MACAROON=$(cat $tmp)
+
+echo -n "Requesting (from prometheus) UPLOAD macaroon to third party push target: "
+requestMacaroon UPLOAD $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
 
 echo -n "Uploading target, authn with X.509: "
-eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE || fail "Upload failed" && success
+if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+    skipped "no TPC UPLOAD macaroon"
+else
+    eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "Upload failed" sourceUploadFailed
+fi
 
-echo "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target..."
-echo -e -n "$DIM"
-eval $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\' -H \'Destination: $THIRDPARTY_UPLOAD_URL\' $FILE_URL 2>$VERBOSE \
-	| tee $COPY_OUTPUT \
-	|| fail "COPY request failed" \
-        && checkCopy
+echo -n "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target"
+if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "no TPC UPLOAD macaroon"
+elif [ $sourceUploadFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "source upload failed"
+else
+    runCopy $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\' -H \'Destination: $THIRDPARTY_UPLOAD_URL\' $FILE_URL
+fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
-eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
+if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+    skipped "no TPC UPLOAD macaroon"
+elif [ $sourceUploadFailed -eq 1 ]; then
+    skipped "source upload failed"
+elif [ $lastTestFailed -eq 1 ]; then
+    skipped "TPC pull copy failed"
+else
+    eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+    checkResult "delete failed"
+fi
 
-echo "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target..."
-echo -e -n "$DIM"
-eval $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL 2>$VERBOSE \
-	| tee $COPY_OUTPUT \
-	|| fail "COPY request failed" \
-        && checkCopy
+echo -n "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target"
+if [ $macaroonFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "no macaroon"
+elif [ $tpcUploadMacaroonFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "no TPC macaroon"
+elif [ $sourceUploadFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "source upload failed"
+else
+    runCopy $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL
+fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
-eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE || fail "Delete failed" && success
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "no macaroon"
+elif [ $tpcUploadMacaroonFailed -eq 1 ]; then
+    skipped "no TPC macaroon"
+elif [ $sourceUploadFailed -eq 1 ]; then
+    skipped "source upload failed"
+elif [ $lastTestFailed -eq 1 ]; then
+    skipped "TPC pull copy failed"
+else
+    eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+    checkResult "delete failed"
+fi
 
 echo -n "Deleting target with X.509: "
-eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+    skipped "no TPC UPLOAD macaroon"
+elif [ $sourceUploadFailed -eq 1 ]; then
+    skipped "source upload failed"
+else
+    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "delete failed"
+fi
