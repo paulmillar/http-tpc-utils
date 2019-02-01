@@ -34,7 +34,14 @@ FAILED=0
 SKIPPED=0
 
 fail() {
-    echo -e "$RESET${RED}FAILED: $@$RESET"
+    error="$@"
+    if [ -f "$VERBOSE" ]; then
+	statusLine="$(sed -n 's/\* The requested URL returned error: //p' $VERBOSE | tail -1)"
+	if [ "$statusLine" != "" ]; then
+	    error="$statusLine"
+	fi
+    fi
+    echo -e "$RESET${RED}FAILED: $error$RESET"
     if [ -f "$VERBOSE" -a $fullRun -eq 0 ]; then
         echo -e "\nVerbose output from curl:"
 	awk '{if ($0 ~ /HTTP\/1.1/){colour="\x1B[0m"}else{colour="\x1B[2m"}print "    "colour$0}' < $VERBOSE
