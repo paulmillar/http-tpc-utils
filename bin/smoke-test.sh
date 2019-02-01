@@ -20,6 +20,10 @@ GREEN="\e[32m"
 RED="\e[31m"
 YELLOW="\e[33m"
 
+SUCCESSFUL=0
+FAILED=0
+SKIPPED=0
+
 fail() {
     echo -e "$RESET${RED}FAILED: $@$RESET"
     if [ -f "$VERBOSE" -a $fullRun -eq 0 ]; then
@@ -31,6 +35,7 @@ fail() {
 	exit 1
     fi
     lastTestFailed=1
+    FAILED=$(( $FAILED + 1 ))
 }
 
 fatal() {
@@ -42,10 +47,12 @@ success() {
     echo -e "${GREEN}SUCCESS$RESET"
     rm -f $VERBOSE
     lastTestFailed=0
+    SUCCESSFUL=$(( $SUCCESSFUL + 1 ))
 }
 
 skipped() {
     echo -e "$RESET${YELLOW}SKIPPED: $@$RESET"
+    SKIPPED=$(( $SKIPPED + 1 ))
 }
 
 cleanup() {
@@ -100,9 +107,11 @@ checkCopy() {
     else
 	lastLine="$(tail -1 $COPY_OUTPUT)"
 
-	# Insert newline if server COPY didn't include one (xrootd)
-	c=$(tail -c 1 $COPY_OUTPUT)
-	[ "$c" != "" ] && echo
+	if [ $fullRun -ne 1 ]; then
+	    # Insert newline if server COPY didn't include one (xrootd)
+	    c=$(tail -c 1 $COPY_OUTPUT)
+	    [ "$c" != "" ] && echo
+	fi
 
 	# REVISIT: shouldn't this be standardised?
 	if [ "${lastLine#success}" != "${lastLine}" ]; then
@@ -402,4 +411,16 @@ elif [ $sourceUploadFailed -eq 1 ]; then
 else
     eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "delete failed"
+fi
+
+if [ $fullRun -eq 1 ]; then
+    echo
+    echo -n "$(( $SUCCESSFUL + $FAILED )) tests completed: $SUCCESSFUL successful"
+    if [ $FAILED -gt 0 -o $SKIPPED -gt 0 ]; then
+	echo -n " ("
+	echo -n "$(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED ) )) )% of tests run"
+	echo -n ", $(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED + $SKIPPED ) )) )% of possible tests"
+	echo -n ")"
+    fi
+    echo -n ", $FAILED failed, $SKIPPED skipped"
 fi
