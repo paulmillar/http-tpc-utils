@@ -3,12 +3,12 @@ UKI-SCOTGRID-GLASGOW     https://svr018.gla.scotgrid.ac.uk/dpm/gla.scotgrid.ac.u
 UKI-LT2-Brunel           https://dc2-grid-64.brunel.ac.uk/dpm/brunel.ac.uk/home/dteam/wlcg-tpc
 UKI-NORTHGRID-MAN-HEP    https://vm33.in.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
 UKI-NORTHGRID-LANCS-HEP  https://fal-pygrid-30.lancs.ac.uk/dpm/lancs.ac.uk/home/dteam
-CERN DPM trunk           https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
-CERN DPM RC              https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
+CERN-DPM-trunk           https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
+CERN-DPM-RC              https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 DESY-prometheus          https://prometheus.desy.de:2443/VOs/dteam
 AGLT2                    https://head01.aglt2.org:2880/pnfs/aglt2.org/dteam
 UKI-LT2-IC-HEP           https://gfe02.grid.hep.ph.ic.ac.uk:2880/pnfs/hep.ph.ic.ac.uk/data/dteam/wlcg-tpc
-CERN EOS                 https://eosppshttp.cern.ch:443/eos/opstest
+CERN-EOS                 https://eosppshttp.cern.ch:443/eos/opstest
 INFN-T1                  https://gridhttps-storm-atlas.cr.cnaf.infn.it:8443/dteam
 UKI-LT2-QMUL             https://se01.esc.qmul.ac.uk:8443/dteam
 NEBRASKA                 https://red-gridftp12.unl.edu:1094/user/dteam
