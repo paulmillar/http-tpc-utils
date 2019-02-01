@@ -11,8 +11,17 @@ CONNECT_TIMEOUT=60  # value in seconds
 
 ## Drop transfer if average bandwidth over SPEED_TIME is less than
 ## SPEED_LIMIT.
+##
 SPEED_TIME=15       # value in seconds
 SPEED_LIMIT=1024    # value in bytes per second
+
+## Total time allowed for a macaroon request to complete.
+##
+MACAROON_TIMEOUT=30 # value in seconds
+
+## Total time allowed for a third-party transfer to complete.
+##
+TPC_TIMEOUT=600     # value in seconds
 
 RESET="\e[0m"
 DIM="\e[2m"
@@ -135,7 +144,7 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 target variable
 
     lastTestFailed=0
 
-    eval $CURL_X509 -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
+    eval $CURL_X509 -m$MACAROON_TIMEOUT -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
     checkFailure "Macaroon request failed." $4
     if [ $lastTestFailed -eq 0 ]; then
 	jq -r .macaroon $macaroon_json >$target_macaroon
@@ -200,6 +209,7 @@ CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
 CURL_X509="$CURL_X509 -H 'Credential: none'"  # Tell dCache not to request GridSite delegation.
 
 MUST_MAKE_PROGRESS="--speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT"
+ENFORCE_TPC_TIMEOUT="-m $TPC_TIMEOUT"
 
 FILE_URL=$URL/smoke-test-$(uname -n)-$$
 
@@ -267,7 +277,7 @@ echo "THIRD PARTY PULL TESTS"
 echo
 
 echo -n "Initiating an unauthenticated HTTP PULL, authn with X.509 to target"
-runCopy $CURL_X509 -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
+runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
 
 echo -n "Deleting target with X.509: "
 if [ $lastTestFailed -eq 1 ]; then
@@ -281,7 +291,7 @@ if [ $macaroonFailed -eq 1 ]; then
     echo -n ": "
     skipped "no macaroon"
 else
-    runCopy $CURL_MACAROON -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
+    runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
 fi
 
 echo -n "Deleting target with macaroon: "
@@ -301,7 +311,7 @@ if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
     echo -n ": "
     skipped "no TPC macaroon"
 else
-    runCopy $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\' -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
+    runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\' -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
 fi
 
 echo -n "Deleting target with X.509: "
@@ -319,7 +329,7 @@ if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
     echo -n ": "
     skipped "no TPC macaroon"
 else
-    runCopy $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
+    runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
 fi
 
 echo -n "Deleting target with macaroon: "
@@ -360,7 +370,7 @@ elif [ $sourceUploadFailed -eq 1 ]; then
     echo -n ": "
     skipped "source upload failed"
 else
-    runCopy $CURL_X509 -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\' -H \'Destination: $THIRDPARTY_UPLOAD_URL\' $FILE_URL
+    runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\' -H \'Destination: $THIRDPARTY_UPLOAD_URL\' $FILE_URL
 fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
@@ -386,7 +396,7 @@ elif [ $sourceUploadFailed -eq 1 ]; then
     echo -n ": "
     skipped "source upload failed"
 else
-    runCopy $CURL_MACAROON -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL
+    runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL
 fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
