@@ -363,7 +363,7 @@ requestMacaroon UPLOAD $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUplo
 
 echo -n "Uploading target, authn with X.509: "
 if [ $tpcUploadMacaroonFailed -eq 1 ]; then
-    skipped "no TPC UPLOAD macaroon"
+    skipped "no third-party macaroon"
 else
     eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" sourceUploadFailed
@@ -372,7 +372,7 @@ fi
 echo -n "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target"
 if [ $tpcUploadMacaroonFailed -eq 1 ]; then
     echo -n ": "
-    skipped "no TPC UPLOAD macaroon"
+    skipped "no third-party macaroon"
 elif [ $sourceUploadFailed -eq 1 ]; then
     echo -n ": "
     skipped "source upload failed"
@@ -382,11 +382,11 @@ fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
 if [ $tpcUploadMacaroonFailed -eq 1 ]; then
-    skipped "no TPC UPLOAD macaroon"
+    skipped "no third-party macaroon"
 elif [ $sourceUploadFailed -eq 1 ]; then
     skipped "source upload failed"
 elif [ $lastTestFailed -eq 1 ]; then
-    skipped "TPC pull copy failed"
+    skipped "push failed"
 else
     eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
     checkResult "delete failed"
@@ -398,7 +398,7 @@ if [ $macaroonFailed -eq 1 ]; then
     skipped "no macaroon"
 elif [ $tpcUploadMacaroonFailed -eq 1 ]; then
     echo -n ": "
-    skipped "no TPC macaroon"
+    skipped "no third-party macaroon"
 elif [ $sourceUploadFailed -eq 1 ]; then
     echo -n ": "
     skipped "source upload failed"
@@ -414,7 +414,7 @@ elif [ $tpcUploadMacaroonFailed -eq 1 ]; then
 elif [ $sourceUploadFailed -eq 1 ]; then
     skipped "source upload failed"
 elif [ $lastTestFailed -eq 1 ]; then
-    skipped "TPC pull copy failed"
+    skipped "push failed"
 else
     eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
     checkResult "delete failed"
