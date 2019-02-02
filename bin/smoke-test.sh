@@ -441,3 +441,8 @@ if [ $fullRun -eq 1 ]; then
     fi
     echo -n ", $FAILED failed, $SKIPPED skipped"
 fi
+
+rc=0
+[ $SKIPPED -gt 0 ] && rc=2
+[ $FAILED -gt 0 ] && rc=1
+exit $rc
