@@ -8,9 +8,9 @@ RESULTS=$(mktemp)
 
 SOUND_ENDPOINT_RE="0 failed, 0 skipped"
 
-cat $BASE/etc/endpoints | while read name url; do
+cat $BASE/etc/endpoints | while read name type url; do
     bin/smoke-test.sh -f $url > $SMOKE_OUTPUT
-    echo -e "$name\t$(tail -1 $SMOKE_OUTPUT)" >> $RESULTS
+    echo -e "$name\t$type\t$(tail -1 $SMOKE_OUTPUT)" >> $RESULTS
 done
 
 column -t $RESULTS -s $'\t' > $SMOKE_OUTPUT
