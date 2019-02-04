@@ -30,4 +30,9 @@ if grep -v -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
     grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT
 fi
 
+if grep -q "\[\*\]" $SMOKE_OUTPUT; then
+    echo
+    echo "  [*]  Indicates one or more known issues with the software."
+fi
+
 rm $SMOKE_OUTPUT
