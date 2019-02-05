@@ -11,6 +11,7 @@ FLORIDA        xrootd      https://cmsio3.rc.ufl.edu:1094/store/user/dteam
 FNAL           dCache      https://stkendca06a.fnal.gov:2880/pnfs/fnal.gov/VOs/dteam
 IN2P3          dCache      https://ccdcatli302.in2p3.fr:2880/dteam
 INFN-T1        StoRM       https://gridhttps-storm-atlas.cr.cnaf.infn.it:8443/dteam
+LRZ-LMU        dCache      https://lcg-lrz-http.grid.lrz.de/pnfs/lrz-muenchen.de/data/atlas/atlasdynafeddisk/tpc/domatest
 NDGF           dCache      https://dav.ndgf.org/dteam/tpc
 NDGF-PREPROD   dCache      https://preprod-srm.ndgf.org/dteam/tpc
 NEBRASKA2      xrootd      https://xrootd-local.unl.edu:1094/user/dteam
