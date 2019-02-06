@@ -213,8 +213,9 @@ trap cleanup EXIT
 
 CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -s -f -L --capath /etc/grid-security/certificates $CURL_EXTRA_OPTIONS"
 CURL_BASE="$CURL_BASE -H 'X-No-Delegate: true'"  # Tell DPM not to request GridSite delegation.
+CURL_BASE="$CURL_BASE --location-trusted"        # SLAC xrootd redirects, expecting re-authentication.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
-CURL_X509="$CURL_X509 -H 'Credential: none'"  # Tell dCache not to request GridSite delegation.
+CURL_X509="$CURL_X509 -H 'Credential: none'"     # Tell dCache not to request GridSite delegation.
 
 MUST_MAKE_PROGRESS="--speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT"
 ENFORCE_TPC_TIMEOUT="-m $TPC_TIMEOUT"
