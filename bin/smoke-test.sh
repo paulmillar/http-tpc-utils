@@ -33,6 +33,8 @@ SUCCESSFUL=0
 FAILED=0
 SKIPPED=0
 
+fullRun=0
+
 fail() {
     error="$@"
     if [ -f "$VERBOSE" ]; then
@@ -170,7 +172,6 @@ for dependency in curl jq awk voms-proxy-info; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-fullRun=0
 while getopts "h?f" opt; do
     case "$opt" in
 	h|\?)
