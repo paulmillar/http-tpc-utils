@@ -359,7 +359,7 @@ echo "Third party push target: $THIRDPARTY_UPLOAD_URL"
 echo
 
 echo -n "Requesting (from prometheus) UPLOAD macaroon to third party push target: "
-requestMacaroon UPLOAD $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
+requestMacaroon UPLOAD,DELETE $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
 
 echo -n "Uploading target, authn with X.509: "
 if [ $tpcUploadMacaroonFailed -eq 1 ]; then
