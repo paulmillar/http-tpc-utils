@@ -111,12 +111,11 @@ runCopy() {
     else
 	echo -e -n "...\n$DIM"
 	eval "$@" 2>$VERBOSE | tee $COPY_OUTPUT
-    fi
-    checkCopy
-}
 
-checkCopy() {
-    if [ $fullRun -ne 1 ]; then
+        # Insert newline if server COPY didn't include one (xrootd)
+	c=$(tail -c 1 $COPY_OUTPUT)
+	[ "$c" != "" ] && echo
+
 	echo -e -n "${RESET}Third party copy: "
     fi
 
@@ -124,12 +123,6 @@ checkCopy() {
 	fail "COPY request failed"
     else
 	lastLine="$(tail -1 $COPY_OUTPUT)"
-
-	if [ $fullRun -ne 1 ]; then
-	    # Insert newline if server COPY didn't include one (xrootd)
-	    c=$(tail -c 1 $COPY_OUTPUT)
-	    [ "$c" != "" ] && echo
-	fi
 
 	# REVISIT: shouldn't this be standardised?
 	if [ "${lastLine#success}" != "${lastLine}" ]; then
