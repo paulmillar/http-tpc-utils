@@ -353,7 +353,7 @@ THIRDPARTY_UPLOAD_URL=$THIRDPARTY_UPLOAD_BASE_URL/smoke-test-push-$(uname -n)-$$
 echo "Third party push target: $THIRDPARTY_UPLOAD_URL"
 echo
 
-echo -n "Requesting (from prometheus) UPLOAD macaroon to third party push target: "
+echo -n "Requesting (from prometheus) UPLOAD,DELETE macaroon to third party push target: "
 requestMacaroon UPLOAD,DELETE $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
 
 echo -n "Uploading target, authn with X.509: "
