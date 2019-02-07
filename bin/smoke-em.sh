@@ -33,7 +33,7 @@ if grep -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
     echo
     echo "SOUND ENDPOINTS"
     echo
-    grep "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT
+    grep "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sed 's/:.*/ successfully./'
 fi
 
 if grep -v -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
