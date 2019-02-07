@@ -18,8 +18,8 @@ NDGF-PREPROD   dCache      https://preprod-srm.ndgf.org/dteam/tpc
 NEBRASKA2      xrootd      https://xrootd-local.unl.edu:1094/user/dteam
 NEBRASKA       xrootd      https://red-gridftp12.unl.edu:1094/user/dteam
 PRAGUELCG2     DPM         https://golias100.farm.particle.cz/dpm/farm.particle.cz/home/dteam/tpc-test
-SURFsara       dCache      https://webdav.grid.surfsara.nl:2882/pnfs/grid.sara.nl/data/dteam/DOMA-TPC
-SURFsara-test  dCache      https://dolphin12.grid.surfsara.nl:2882/groups/dteam/DOMA-TPC
+SARA           dCache      https://webdav.grid.surfsara.nl:2882/pnfs/grid.sara.nl/data/dteam/DOMA-TPC
+SARA-test      dCache      https://dolphin12.grid.surfsara.nl:2882/groups/dteam/DOMA-TPC
 UKI-BRUNEL     DPM         https://dc2-grid-64.brunel.ac.uk/dpm/brunel.ac.uk/home/dteam/wlcg-tpc
 UKI-GLASGOW    DPM         https://svr018.gla.scotgrid.ac.uk/dpm/gla.scotgrid.ac.uk/home/dteam
 UKI-IC         dCache      https://gfe02.grid.hep.ph.ic.ac.uk:2880/pnfs/hep.ph.ic.ac.uk/data/dteam/wlcg-tpc
