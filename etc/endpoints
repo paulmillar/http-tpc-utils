@@ -7,6 +7,7 @@ CERN-GRID      DynaFed[*]  https://dynafed-atlas.cern.ch/data/grid/tpc
 CERN-RC        DPM         https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 CERN-TRUNK     DPM         https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
 DESY-PROM      dCache      https://prometheus.desy.de:2443/VOs/dteam
+DESY-DOMA      dCache      https://dcache-se-doma.desy.de:2880/dteam
 FLORIDA        xrootd      https://cmsio3.rc.ufl.edu:1094/store/user/dteam
 FNAL           dCache      https://stkendca06a.fnal.gov:2880/pnfs/fnal.gov/VOs/dteam
 IN2P3          dCache      https://ccdcatli302.in2p3.fr:2880/dteam
