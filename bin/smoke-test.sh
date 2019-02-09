@@ -104,6 +104,13 @@ checkFailure() {
     done
 }
 
+checkHeader() { # $1 - error if cmd fails, $2 - RE for headers, $3 error if RE doesn't match
+    checkFailure "$1"
+
+    grep -q "$2" $HEADERS
+    checkResult "$3"
+}
+
 runCopy() {
     if [ $fullRun -eq 1 ]; then
 	echo -n ": "
@@ -200,11 +207,12 @@ PROXY=/tmp/x509up_u$(id -u)
 
 
 VERBOSE=$(mktemp)
+HEADERS=$(mktemp)
 COPY_OUTPUT=$(mktemp)
-FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT"
+FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT $HEADERS"
 trap cleanup EXIT
 
-CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -s -f -L --capath /etc/grid-security/certificates $CURL_EXTRA_OPTIONS"
+CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L --capath /etc/grid-security/certificates $CURL_EXTRA_OPTIONS"
 CURL_BASE="$CURL_BASE -H 'X-No-Delegate: true'"  # Tell DPM not to request GridSite delegation.
 CURL_BASE="$CURL_BASE --location-trusted"        # SLAC xrootd redirects, expecting re-authentication.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
@@ -229,6 +237,22 @@ echo -n "Downloading from target with X.509 authn: "
 if [ $uploadFailed -eq 0 ]; then
     eval $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Download failed"
+else
+    skipped "upload failed"
+fi
+
+echo -n "Obtain checksum via RFC 3230 HEAD request with X.509 authn: "
+if [ $uploadFailed -eq 0 ]; then
+    eval $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+else
+    skipped "upload failed"
+fi
+
+echo -n "Obtain checksum via RFC 3230 GET request with X.509 authn: "
+if [ $uploadFailed -eq 0 ]; then
+    eval $CURL_X509 -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+    checkHeader "GET request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
 else
     skipped "upload failed"
 fi
@@ -262,6 +286,26 @@ elif [ $uploadFailed -eq 1 ]; then
 else
     eval $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Download failed"
+fi
+
+echo -n "Obtain checksum via RFC 3230 HEAD request with macaroon authz: "
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "no macaroon"
+elif [ $uploadFailed -eq 1 ]; then
+    skipped "upload failed"
+else
+    eval $CURL_MACAROON -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+fi
+
+echo -n "Obtain checksum via RFC 3230 GET request with macroon authz: "
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "no macaroon"
+elif [ $uploadFailed -eq 1 ]; then
+    skipped "upload failed"
+else
+    eval $CURL_MACAROON -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+    checkHeader "GET request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
 fi
 
 echo -n "Deleting target with macaroon authz: "
