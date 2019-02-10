@@ -105,10 +105,12 @@ checkFailure() {
 }
 
 checkHeader() { # $1 - error if cmd fails, $2 - RE for headers, $3 error if RE doesn't match
-    checkFailure "$1"
-
-    grep -q "$2" $HEADERS
-    checkResult "$3"
+    if [ $? -ne 0 ]; then
+       fail "$1"
+    else
+       grep -q "$2" $HEADERS
+       checkResult "$3"
+    fi
 }
 
 runCopy() {
