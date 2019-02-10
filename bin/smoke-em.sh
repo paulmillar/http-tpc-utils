@@ -70,7 +70,7 @@ buildReport() {
 	echo
 	echo "PROBLEMATIC ENDPOINTS"
 	echo
-	grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT
+	grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sort -k12nr
     fi
 
     if grep -q "\[\*\]" $SMOKE_OUTPUT; then
