@@ -243,18 +243,18 @@ else
     skipped "upload failed"
 fi
 
-echo -n "Obtain checksum via RFC 3230 HEAD request with X.509 authn: "
+echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
 if [ $uploadFailed -eq 0 ]; then
-    eval $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+    eval $CURL_X509 -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+    checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
 else
     skipped "upload failed"
 fi
 
-echo -n "Obtain checksum via RFC 3230 GET request with X.509 authn: "
+echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with X.509 authn: "
 if [ $uploadFailed -eq 0 ]; then
-    eval $CURL_X509 -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-    checkHeader "GET request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+    eval $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
 else
     skipped "upload failed"
 fi
@@ -290,7 +290,17 @@ else
     checkResult "Download failed"
 fi
 
-echo -n "Obtain checksum via RFC 3230 HEAD request with macaroon authz: "
+echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "no macaroon"
+elif [ $uploadFailed -eq 1 ]; then
+    skipped "upload failed"
+else
+    eval $CURL_MACAROON -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+    checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+fi
+
+echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with macaroon authz: "
 if [ $macaroonFailed -eq 1 ]; then
     skipped "no macaroon"
 elif [ $uploadFailed -eq 1 ]; then
@@ -298,16 +308,6 @@ elif [ $uploadFailed -eq 1 ]; then
 else
     eval $CURL_MACAROON -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
     checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
-fi
-
-echo -n "Obtain checksum via RFC 3230 GET request with macroon authz: "
-if [ $macaroonFailed -eq 1 ]; then
-    skipped "no macaroon"
-elif [ $uploadFailed -eq 1 ]; then
-    skipped "upload failed"
-else
-    eval $CURL_MACAROON -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-    checkHeader "GET request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
 fi
 
 echo -n "Deleting target with macaroon authz: "
