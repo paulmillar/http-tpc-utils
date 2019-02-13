@@ -170,7 +170,7 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 target variable
     eval $3="$macaroon"
 }
 
-for dependency in curl jq awk voms-proxy-info; do
+for dependency in curl jq awk voms-proxy-info dig; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
@@ -201,6 +201,14 @@ if [ "${1#https://}" = "$1" ]; then
 fi
 
 URL=${1%/}
+WITHOUT_SCHEME=${URL#https://}
+HOST_PORT=$(echo $WITHOUT_SCHEME | cut -d '/' -f1)
+HOST=$(echo $HOST_PORT | cut -d ':' -f1)
+if [ "$HOST" = "$HOST_PORT" ]; then
+    PORT=443
+else
+    PORT=${HOST_PORT#$HOST:}
+fi
 
 voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
@@ -225,100 +233,120 @@ ENFORCE_TPC_TIMEOUT="-m $TPC_TIMEOUT"
 
 FILE_URL=$URL/smoke-test-$(uname -n)-$$
 
+if [ -n "$DNS_SERVER" ]; then
+    DIG_OPTIONS="@$DNS_SERVER"
+fi
+
 echo
 echo "Target: $FILE_URL"
 echo
 echo "DIRECT TRANSFER TESTS"
 echo
 
-echo -n "Uploading to target with X.509 authn: "
-eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
-checkResult "Upload failed" uploadFailed
+ALL_IP_ADDRESSES=$(dig $DIG_OPTIONS $HOST | awk '/ANSWER SECTION:/,/^$/{print $5}' | sort | uniq)
+IP_ADDRESS_COUNT=$(echo "$ALL_IP_ADDRESSES" | wc -w)
 
-echo -n "Downloading from target with X.509 authn: "
-if [ $uploadFailed -eq 0 ]; then
-    eval $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Download failed"
-else
-    skipped "upload failed"
-fi
+IP_ADDRESS_COUNTER=1
+for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
-echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
-if [ $uploadFailed -eq 0 ]; then
-    eval $CURL_X509 -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-    checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
-else
-    skipped "upload failed"
-fi
+    if [ $IP_ADDRESS_COUNT -gt 1 ]; then
+	[ $IP_ADDRESS_COUNTER -ne 1 ] && echo
+	echo "Checking $IP_ADDRESS ($IP_ADDRESS_COUNTER of $IP_ADDRESS_COUNT)"
+	echo
+	CURL_TARGET="--connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
+	IP_ADDRESS_COUNTER=$(( $IP_ADDRESS_COUNTER + 1 ))
+    fi
 
-echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with X.509 authn: "
-if [ $uploadFailed -eq 0 ]; then
-    eval $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
-else
-    skipped "upload failed"
-fi
-
-echo -n "Deleting target with X.509 authn: "
-if [ $uploadFailed -eq 0 ]; then
-    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Delete failed"
-else
-    skipped "upload failed"
-fi
-
-echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
-requestMacaroon DOWNLOAD,UPLOAD,DELETE $FILE_URL TARGET_MACAROON macaroonFailed
-
-CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
-
-echo -n "Uploading to target with macaroon authz: "
-if [ $macaroonFailed -eq 0 ]; then
-    eval $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+    echo -n "Uploading to target with X.509 authn: "
+    eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" uploadFailed
-else
-    skipped "no macaroon"
-fi
 
-echo -n "Downloading from target with macaroon authz: "
-if [ $macaroonFailed -eq 1 ]; then
-    skipped "no macaroon"
-elif [ $uploadFailed -eq 1 ]; then
-    skipped "upload failed"
-else
-    eval $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Download failed"
-fi
+    echo -n "Downloading from target with X.509 authn: "
+    if [ $uploadFailed -eq 0 ]; then
+	eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+	checkResult "Download failed"
+    else
+	skipped "upload failed"
+    fi
 
-echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
-if [ $macaroonFailed -eq 1 ]; then
-    skipped "no macaroon"
-elif [ $uploadFailed -eq 1 ]; then
-    skipped "upload failed"
-else
-    eval $CURL_MACAROON -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-    checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
-fi
+    echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
+    if [ $uploadFailed -eq 0 ]; then
+	eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+	checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+    else
+	skipped "upload failed"
+    fi
 
-echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with macaroon authz: "
-if [ $macaroonFailed -eq 1 ]; then
-    skipped "no macaroon"
-elif [ $uploadFailed -eq 1 ]; then
-    skipped "upload failed"
-else
-    eval $CURL_MACAROON -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
-fi
+    echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with X.509 authn: "
+    if [ $uploadFailed -eq 0 ]; then
+	eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+	checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+    else
+	skipped "upload failed"
+    fi
 
-echo -n "Deleting target with macaroon authz: "
-if [ $macaroonFailed -eq 1 ]; then
-    skipped "no macaroon"
-elif [ $uploadFailed -eq 1 ]; then
-    skipped "upload failed"
-else
-    eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
-    checkResult "Delete failed"
-fi
+    echo -n "Deleting target with X.509 authn: "
+    if [ $uploadFailed -eq 0 ]; then
+	eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+	checkResult "Delete failed"
+    else
+	skipped "upload failed"
+    fi
+
+    echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
+    requestMacaroon DOWNLOAD,UPLOAD,DELETE $FILE_URL TARGET_MACAROON macaroonFailed
+
+    CURL_MACAROON="$CURL_BASE $CURL_TARGET -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
+
+    echo -n "Uploading to target with macaroon authz: "
+    if [ $macaroonFailed -eq 0 ]; then
+	eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+	checkResult "Upload failed" uploadFailed
+    else
+	skipped "no macaroon"
+    fi
+
+    echo -n "Downloading from target with macaroon authz: "
+    if [ $macaroonFailed -eq 1 ]; then
+	skipped "no macaroon"
+    elif [ $uploadFailed -eq 1 ]; then
+	skipped "upload failed"
+    else
+	eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+	checkResult "Download failed"
+    fi
+
+    echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
+    if [ $macaroonFailed -eq 1 ]; then
+	skipped "no macaroon"
+    elif [ $uploadFailed -eq 1 ]; then
+	skipped "upload failed"
+    else
+	eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+	checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+    fi
+
+    echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with macaroon authz: "
+    if [ $macaroonFailed -eq 1 ]; then
+	skipped "no macaroon"
+    elif [ $uploadFailed -eq 1 ]; then
+	skipped "upload failed"
+    else
+	eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+	checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+    fi
+
+    echo -n "Deleting target with macaroon authz: "
+    if [ $macaroonFailed -eq 1 ]; then
+	skipped "no macaroon"
+    elif [ $uploadFailed -eq 1 ]; then
+	skipped "upload failed"
+    else
+	eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
+	checkResult "Delete failed"
+    fi
+
+done
 
 echo
 echo "THIRD PARTY PULL TESTS"
