@@ -372,14 +372,14 @@ fi
 
 echo -n "Deleting target with macaroon: "
 if [ $macaroonFailed -eq 1 ]; then
-    skipped "macaroon failed"
+    skipped "no macaroon"
 elif [ $lastTestFailed -eq 1 ]; then
     skipped "upload failed"
 else
     eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 fi
 
-echo -n "Requesting (from prometheus) DOWNLOAD macaroon for private file on: "
+echo -n "Requesting (from prometheus) DOWNLOAD macaroon for a private file: "
 requestMacaroon DOWNLOAD $THIRDPARTY_PRIVATE_URL THIRDPARTY_DOWNLOAD_MACAROON tpcDownloadMacaroonFailed
 
 echo -n "Initiating a macaroon authz HTTP PULL, authn with X.509 to target"
@@ -401,7 +401,10 @@ else
 fi
 
 echo -n "Initiating a macaroon authz HTTP PULL, authz with macaroon to target"
-if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -eq 1 ]; then
+    echo -n ": "
+    skipped "no macaroon"
+elif [ $tpcDownloadMacaroonFailed -eq 1 ]; then
     echo -n ": "
     skipped "no TPC macaroon"
 else
@@ -409,7 +412,9 @@ else
 fi
 
 echo -n "Deleting target with macaroon: "
-if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -eq 1 ]; then
+    skipped "no macaroon"
+elif [ $tpcDownloadMacaroonFailed -eq 1 ]; then
     skipped "no TPC macaroon"
 elif [ $lastTestFailed -eq 1 ]; then
     skipped "third-party transfer failed"
