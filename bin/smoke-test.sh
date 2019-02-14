@@ -260,6 +260,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     echo -n "Uploading to target with X.509 authn: "
     eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" uploadFailed
+    [ $uploadFailed -eq 1 ] && eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 
     echo -n "Downloading from target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
@@ -302,6 +303,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     if [ $macaroonFailed -eq 0 ]; then
 	eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
 	checkResult "Upload failed" uploadFailed
+	[ $uploadFailed -eq 1 ] && eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
 	skipped "no macaroon"
     fi
@@ -441,6 +443,7 @@ if [ $tpcUploadMacaroonFailed -eq 1 ]; then
 else
     eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" sourceUploadFailed
+    [ $sourceUploadFailed -eq 1 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 fi
 
 echo -n "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target"
