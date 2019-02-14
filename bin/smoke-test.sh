@@ -243,7 +243,7 @@ echo
 echo "DIRECT TRANSFER TESTS"
 echo
 
-ALL_IP_ADDRESSES=$(dig $DIG_OPTIONS $HOST | awk '/ANSWER SECTION:/,/^$/{print $5}' | sort | uniq)
+ALL_IP_ADDRESSES=$(dig $DIG_OPTIONS $HOST | awk '/ANSWER SECTION:/,/^$/{ if ($4 ~ /^A$/) print $5}' | sort | uniq)
 IP_ADDRESS_COUNT=$(echo "$ALL_IP_ADDRESSES" | wc -w)
 
 IP_ADDRESS_COUNTER=1
