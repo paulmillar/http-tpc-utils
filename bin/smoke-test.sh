@@ -278,14 +278,6 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 	skipped "upload failed"
     fi
 
-    echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with X.509 authn: "
-    if [ $uploadFailed -eq 0 ]; then
-	eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-	checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
-    else
-	skipped "upload failed"
-    fi
-
     echo -n "Deleting target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
 	eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
@@ -326,16 +318,6 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     else
 	eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
 	checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
-    fi
-
-    echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with macaroon authz: "
-    if [ $macaroonFailed -eq 1 ]; then
-	skipped "no macaroon"
-    elif [ $uploadFailed -eq 1 ]; then
-	skipped "upload failed"
-    else
-	eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-	checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
     fi
 
     echo -n "Deleting target with macaroon authz: "
