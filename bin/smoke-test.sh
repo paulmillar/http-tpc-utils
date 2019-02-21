@@ -36,7 +36,7 @@ SKIPPED=0
 fullRun=0
 
 fail() {
-    if [ "$lastTestFailed" == "0" ]; then
+    if [ -z "$lastTestFailed" -o "$lastTestFailed" == "0" ]; then
 	error="$@"
     else
 	error="$(curlRcMessage)"
@@ -315,7 +315,7 @@ curlRcMessage() {
 	    echo "SSL public key does not matched pinned public key."
 	    ;;
 	*)
-	    echo "Unknown code: $rc"
+	    echo "Unknown code: $lastTestFailed"
     esac
 }
 
@@ -364,9 +364,11 @@ runCopy() {
     if [ $fullRun -eq 1 ]; then
 	echo -n ": "
 	eval "$@" 2>$VERBOSE >$COPY_OUTPUT
+	lastTestFailed=$?
     else
 	echo -e -n "...\n$DIM"
 	eval "$@" 2>$VERBOSE | tee $COPY_OUTPUT
+	lastTestFailed=$?
 
         # Insert newline if server COPY didn't include one (xrootd)
 	c=$(tail -c 1 $COPY_OUTPUT)
@@ -375,7 +377,7 @@ runCopy() {
 	echo -e -n "${RESET}Third party copy: "
     fi
 
-    if [ $? -ne 0 ]; then
+    if [ $lastTestFailed -ne 0 ]; then
 	fail "COPY request failed"
     else
 	lastLine="$(tail -1 $COPY_OUTPUT)"
@@ -394,7 +396,7 @@ runCopy() {
 }
 
 
-requestMacaroon() { # $1 Caveats, $2 URL, $3 target variable
+requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable for result
     local target_macaroon=$(mktemp)
     local macaroon_json=$(mktemp)
     local macaroon
@@ -493,6 +495,11 @@ echo
 ALL_IP_ADDRESSES=$(dig $DIG_OPTIONS $HOST | awk '/ANSWER SECTION:/,/^$/{ if ($4 ~ /^A$/) print $5}' | sort | uniq)
 IP_ADDRESS_COUNT=$(echo "$ALL_IP_ADDRESSES" | wc -w)
 
+if [ $IP_ADDRESS_COUNT -eq 0 ]; then
+   echo "WARNING: Failed to resolve any IP addresses for $HOST"
+fi
+
+macaroonFailed=1
 IP_ADDRESS_COUNTER=1
 for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
