@@ -36,7 +36,12 @@ SKIPPED=0
 fullRun=0
 
 fail() {
-    error="$@"
+    if [ "$lastTestFailed" == "0" ]; then
+	error="$@"
+    else
+	error="$(curlRcMessage)"
+    fi
+
     if [ -f "$VERBOSE" ]; then
 	statusLine="$(sed -n 's/\* The requested URL returned error: //p' $VERBOSE | tail -1)"
 	if [ "$statusLine" != "" ]; then
@@ -52,7 +57,6 @@ fail() {
     if [ $fullRun -eq 0 ]; then
 	exit 1
     fi
-    lastTestFailed=1
     FAILED=$(( $FAILED + 1 ))
 }
 
@@ -64,7 +68,6 @@ fatal() {
 success() {
     echo -e "${GREEN}SUCCESS$RESET"
     rm -f $VERBOSE
-    lastTestFailed=0
     SUCCESSFUL=$(( $SUCCESSFUL + 1 ))
 }
 
@@ -78,8 +81,247 @@ cleanup() {
     echo -e "$RESET"
 }
 
+curlRcMessage() {
+    case $lastTestFailed in
+	0)
+	    echo "Success."
+	    ;;
+	1)
+	    echo "Unsupported protocol."
+	    ;;
+	2)
+	    echo "Failed to initialize."
+	    ;;
+	3)
+	    echo "URL malformed. The syntax was not correct."
+	    ;;
+	4)
+	    echo "A feature or option is not available."
+	    ;;
+	5)
+	    echo "Couldn't resolve proxy"
+	    ;;
+	6)
+	    echo "Couldn't resolve host"
+	    ;;
+	7)
+	    echo "Failed to connect to host."
+	    ;;
+	8)
+	    echo "Weird server reply."
+	    ;;
+	9)
+	    echo "FTP access denied."
+	    ;;
+	11|13)
+	    echo "FTP weird PASS reply."
+	    ;;
+	14)
+	    echo "FTP weird 227 format."
+	    ;;
+	15)
+	    echo "FTP can't get host."
+	    ;;
+	17)
+	    echo "FTP couldn't set binary."
+	    ;;
+	18)
+	    echo "Partial file."
+	    ;;
+	19)
+	    echo "RETR (or similar) command failed."
+	    ;;
+	21)
+	    echo "FTP quote error."
+	    ;;
+	22)
+	    echo "HTTP  page  not  retrieved."
+	    ;;
+	23)
+	    echo "Write error."
+	    ;;
+	25)
+	    echo "FTP couldn't STOR file."
+	    ;;
+	26)
+	    echo "Read error."
+	    ;;
+	27)
+	    echo "Out of memory."
+	    ;;
+	28)
+	    echo "Operation timeout."
+	    ;;
+	30)
+	    echo "FTP PORT failed."
+	    ;;
+	31)
+	    echo "FTP couldn't use REST."
+	    ;;
+	33)
+	    echo "HTTP range error."
+	    ;;
+	34)
+	    echo "HTTP post error."
+	    ;;
+	35)
+	    echo "SSL connect error."
+	    ;;
+	36)
+	    echo "FTP bad download resume."
+	    ;;
+	37)
+	    echo "FILE couldn't read file."
+	    ;;
+	38)
+	    echo "LDAP cannot bind."
+	    ;;
+	39)
+	    echo "LDAP search failed."
+	    ;;
+	41)
+	    echo "LDAP function not found."
+	    ;;
+	42)
+	    echo "Aborted by callback."
+	    ;;
+	43)
+	    echo "Function was called with a bad parameter."
+	    ;;
+	45)
+	    echo "Outgoing interface could not be used."
+	    ;;
+	47)
+	    echo "Too many redirects."
+	    ;;
+	48)
+	    echo "Unknown option specified to libcurl."
+	    ;;
+	49)
+	    echo "Malformed telnet option."
+	    ;;
+	51)
+	    echo "The peer's SSL certificate or SSH MD5 fingerprint was not OK."
+	    ;;
+	52)
+	    echo "The server didn't reply anything."
+	    ;;
+	53)
+	    echo "SSL crypto engine not found."
+	    ;;
+	54)
+	    echo "Cannot set SSL crypto engine as default."
+	    ;;
+	55)
+	    echo "Failed sending network data."
+	    ;;
+	56)
+	    echo "Failure in receiving network data."
+	    ;;
+	58)
+	    echo "Problem with the local certificate."
+	    ;;
+	59)
+	    echo "Couldn't use specified SSL cipher."
+	    ;;
+	60)
+	    echo "Peer certificate cannot be authenticated with known CA certificates."
+	    ;;
+	61)
+	    echo "Unrecognized transfer encoding."
+	    ;;
+	62)
+	    echo "Invalid LDAP URL."
+	    ;;
+	63)
+	    echo "Maximum file size exceeded."
+	    ;;
+	64)
+	    echo "Requested FTP SSL level failed."
+	    ;;
+	65)
+	    echo "Sending the data requires a rewind that failed."
+	    ;;
+	66)
+	    echo "Failed to initialise SSL Engine."
+	    ;;
+	67)
+	    echo "Failed to log in."
+	    ;;
+	68)
+	    echo "File not found on TFTP server."
+	    ;;
+	69)
+	    echo "Permission problem on TFTP server."
+	    ;;
+	70)
+	    echo "Out of disk space on TFTP server."
+	    ;;
+	71)
+	    echo "Illegal TFTP operation."
+	    ;;
+	72)
+	    echo "Unknown TFTP transfer ID."
+	    ;;
+	73)
+	    echo "File already exists (TFTP)."
+	    ;;
+	74)
+	    echo "No such user (TFTP)."
+	    ;;
+	75)
+	    echo "Character conversion failed."
+	    ;;
+	76)
+	    echo "Character conversion functions required."
+	    ;;
+	77)
+	    echo "Problem with reading the SSL CA cert."
+	    ;;
+	78)
+	    echo "The resource referenced in the URL does not exist."
+	    ;;
+	79)
+	    echo "An unspecified error occurred during the SSH session."
+	    ;;
+	80)
+	    echo "Failed to shut down the SSL connection."
+	    ;;
+	82)
+	    echo "Could not load CRL file."
+	    ;;
+	83)
+	    echo "Issuer check failed."
+	    ;;
+	84)
+	    echo "The FTP PRET command failed."
+	    ;;
+	85)
+	    echo "RTSP: mismatch of CSeq numbers."
+	    ;;
+	86)
+	    echo "RTSP: mismatch of Session Identifiers."
+	    ;;
+	87)
+	    echo "unable to parse FTP file list."
+	    ;;
+	88)
+	    echo "FTP chunk callback reported error."
+	    ;;
+	89)
+	    echo "No connection available, the session will be queued."
+	    ;;
+	90)
+	    echo "SSL public key does not matched pinned public key."
+	    ;;
+	*)
+	    echo "Unknown code: $rc"
+    esac
+}
+
 checkResult() {
-    if [ $? -eq 0 ]; then
+    lastTestFailed=$?
+    if [ $lastTestFailed -eq 0 ]; then
 	success
     else
 	fail "$1"
@@ -93,19 +335,24 @@ checkResult() {
 }
 
 checkFailure() {
-    if [ $? -ne 0 ]; then
-	fail "$1"
+    local rc=$?
+
+    if [ $rc -ne 0 ]; then
+        lastTestFailed=$rc
+        fail "$1"
     fi
 
     shift
 
     for var in "$@"; do
-	eval $var=$lastTestFailed
+        eval $var=$lastTestFailed
     done
 }
 
 checkHeader() { # $1 - error if cmd fails, $2 - RE for headers, $3 error if RE doesn't match
-    if [ $? -ne 0 ]; then
+    local rc=$?
+    if [ $rc -ne 0 ]; then
+       lastTestFailed=$rc
        fail "$1"
     else
        grep -q "$2" $HEADERS
@@ -260,7 +507,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     echo -n "Uploading to target with X.509 authn: "
     eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" uploadFailed
-    [ $uploadFailed -eq 1 ] && eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+    [ $uploadFailed -ne 0 ] && eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 
     echo -n "Downloading from target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
@@ -295,15 +542,15 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     if [ $macaroonFailed -eq 0 ]; then
 	eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
 	checkResult "Upload failed" uploadFailed
-	[ $uploadFailed -eq 1 ] && eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+	[ $uploadFailed -ne 0 ] && eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
 	skipped "no macaroon"
     fi
 
     echo -n "Downloading from target with macaroon authz: "
-    if [ $macaroonFailed -eq 1 ]; then
+    if [ $macaroonFailed -ne 0 ]; then
 	skipped "no macaroon"
-    elif [ $uploadFailed -eq 1 ]; then
+    elif [ $uploadFailed -ne 0 ]; then
 	skipped "upload failed"
     else
 	eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
@@ -311,9 +558,9 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     fi
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
-    if [ $macaroonFailed -eq 1 ]; then
+    if [ $macaroonFailed -ne 0 ]; then
 	skipped "no macaroon"
-    elif [ $uploadFailed -eq 1 ]; then
+    elif [ $uploadFailed -ne 0 ]; then
 	skipped "upload failed"
     else
 	eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
@@ -321,9 +568,9 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     fi
 
     echo -n "Deleting target with macaroon authz: "
-    if [ $macaroonFailed -eq 1 ]; then
+    if [ $macaroonFailed -ne 0 ]; then
 	skipped "no macaroon"
-    elif [ $uploadFailed -eq 1 ]; then
+    elif [ $uploadFailed -ne 0 ]; then
 	skipped "upload failed"
     else
 	eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
@@ -340,14 +587,14 @@ echo -n "Initiating an unauthenticated HTTP PULL, authn with X.509 to target"
 runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
 
 echo -n "Deleting target with X.509: "
-if [ $lastTestFailed -eq 1 ]; then
+if [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
     eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 fi
 
 echo -n "Initiating an unauthenticated HTTP PULL, authz with macaroon to target"
-if [ $macaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
 else
@@ -355,9 +602,9 @@ else
 fi
 
 echo -n "Deleting target with macaroon: "
-if [ $macaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -ne 0 ]; then
     skipped "no macaroon"
-elif [ $lastTestFailed -eq 1 ]; then
+elif [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
     eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
@@ -367,7 +614,7 @@ echo -n "Requesting (from prometheus) DOWNLOAD macaroon for a private file: "
 requestMacaroon DOWNLOAD $THIRDPARTY_PRIVATE_URL THIRDPARTY_DOWNLOAD_MACAROON tpcDownloadMacaroonFailed
 
 echo -n "Initiating a macaroon authz HTTP PULL, authn with X.509 to target"
-if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no TPC macaroon"
 else
@@ -375,9 +622,9 @@ else
 fi
 
 echo -n "Deleting target with X.509: "
-if [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     skipped "no TPC macaroon"
-elif [ $lastTestFailed -eq 1 ]; then
+elif [ $lastTestFailed -ne 0 ]; then
     skipped "third-party transfer failed"
 else
     eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
@@ -385,10 +632,10 @@ else
 fi
 
 echo -n "Initiating a macaroon authz HTTP PULL, authz with macaroon to target"
-if [ $macaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
-elif [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no TPC macaroon"
 else
@@ -396,11 +643,11 @@ else
 fi
 
 echo -n "Deleting target with macaroon: "
-if [ $macaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -ne 0 ]; then
     skipped "no macaroon"
-elif [ $tpcDownloadMacaroonFailed -eq 1 ]; then
+elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     skipped "no TPC macaroon"
-elif [ $lastTestFailed -eq 1 ]; then
+elif [ $lastTestFailed -ne 0 ]; then
     skipped "third-party transfer failed"
 else
     eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
@@ -420,19 +667,19 @@ echo -n "Requesting (from prometheus) UPLOAD,DELETE macaroon to third party push
 requestMacaroon UPLOAD,DELETE $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
 
 echo -n "Uploading target, authn with X.509: "
-if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+if [ $tpcUploadMacaroonFailed -ne 0 ]; then
     skipped "no third-party macaroon"
 else
     eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" sourceUploadFailed
-    [ $sourceUploadFailed -eq 1 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+    [ $sourceUploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 fi
 
 echo -n "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target"
-if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+if [ $tpcUploadMacaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no third-party macaroon"
-elif [ $sourceUploadFailed -eq 1 ]; then
+elif [ $sourceUploadFailed -ne 0 ]; then
     echo -n ": "
     skipped "source upload failed"
 else
@@ -440,11 +687,11 @@ else
 fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
-if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+if [ $tpcUploadMacaroonFailed -ne 0 ]; then
     skipped "no third-party macaroon"
-elif [ $sourceUploadFailed -eq 1 ]; then
+elif [ $sourceUploadFailed -ne 0 ]; then
     skipped "source upload failed"
-elif [ $lastTestFailed -eq 1 ]; then
+elif [ $lastTestFailed -ne 0 ]; then
     skipped "push failed"
 else
     eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
@@ -452,13 +699,13 @@ else
 fi
 
 echo -n "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target"
-if [ $macaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
-elif [ $tpcUploadMacaroonFailed -eq 1 ]; then
+elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no third-party macaroon"
-elif [ $sourceUploadFailed -eq 1 ]; then
+elif [ $sourceUploadFailed -ne 0 ]; then
     echo -n ": "
     skipped "source upload failed"
 else
@@ -466,13 +713,13 @@ else
 fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
-if [ $macaroonFailed -eq 1 ]; then
+if [ $macaroonFailed -ne 0 ]; then
     skipped "no macaroon"
-elif [ $tpcUploadMacaroonFailed -eq 1 ]; then
+elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
     skipped "no TPC macaroon"
-elif [ $sourceUploadFailed -eq 1 ]; then
+elif [ $sourceUploadFailed -ne 0 ]; then
     skipped "source upload failed"
-elif [ $lastTestFailed -eq 1 ]; then
+elif [ $lastTestFailed -ne 0 ]; then
     skipped "push failed"
 else
     eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
@@ -480,9 +727,9 @@ else
 fi
 
 echo -n "Deleting target with X.509: "
-if [ $tpcUploadMacaroonFailed -eq 1 ]; then
+if [ $tpcUploadMacaroonFailed -ne 0 ]; then
     skipped "no TPC UPLOAD macaroon"
-elif [ $sourceUploadFailed -eq 1 ]; then
+elif [ $sourceUploadFailed -ne 0 ]; then
     skipped "source upload failed"
 else
     eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
