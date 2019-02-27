@@ -56,7 +56,11 @@ case $MAILER in
 esac
 
 runTests() {
+    TOTAL=$(wc -l $BASE/etc/endpoints|awk '{print $1}')
+    COUNT=1
     cat $BASE/etc/endpoints | while read name type url; do
+	echo -n -e "Testing: $name [$COUNT/$TOTAL]     \r"
+	COUNT=$(( $COUNT + 1 ))
         bin/smoke-test.sh -f $url > $SMOKE_OUTPUT
         if [ $? -ne 0 ]; then
             [ -s $FAILURES ] && echo -e "\n" >> $FAILURES
@@ -65,6 +69,7 @@ runTests() {
         fi
         echo -e "$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')" >> $RESULTS
     done
+    echo "                     "
 }
 
 buildReport() {
