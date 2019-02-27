@@ -14,21 +14,26 @@ RESULTS=$(mktemp)
 FAILURES=$(mktemp)
 REPORT=$(mktemp)
 FILES_TO_DELETE="$SMOKE_OUTPUT $RESULTS $FAILURES $REPORT"
+MAILER=mail
 
 SOUND_ENDPOINT_RE="0 failed, 0 skipped"
 
 OUTPUT_DESCRIPTION="stdout"
-while getopts "h?s:" opt; do
+while getopts "h?s:m:" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 [-s <addr>]"
+            echo "$0 [-s <addr> [-m <mailer>]]"
             echo
-            echo "-s  send report as an email to <addr>"
+            echo "    -s  send report as an email to <addr>"
+            echo "    -m  use <mailer> to send email: 'mail' and 'thunderbird'"
             exit 0
             ;;
         s)
             sendEmail="$OPTARG"
-	    OUTPUT_DESCRIPTION="emailing"
+            OUTPUT_DESCRIPTION="emailing"
+            ;;
+        m)
+            MAILER="$OPTARG"
             ;;
     esac
 done
@@ -42,15 +47,23 @@ fatal() {
     exit 1
 }
 
+case $MAILER in
+    mail|thunderbird)
+        ;;
+    *)
+        fatal "Unknown mailer '$MAILER'"
+        ;;
+esac
+
 runTests() {
     cat $BASE/etc/endpoints | while read name type url; do
-	bin/smoke-test.sh -f $url > $SMOKE_OUTPUT
-	if [ $? -ne 0 ]; then
-	    [ -s $FAILURES ] && echo -e "\n" >> $FAILURES
-	    echo $name >> $FAILURES
-	    head -n-2 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g' | awk '{print "    "$0}' >> $FAILURES
-	fi
-	echo -e "$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')" >> $RESULTS
+        bin/smoke-test.sh -f $url > $SMOKE_OUTPUT
+        if [ $? -ne 0 ]; then
+            [ -s $FAILURES ] && echo -e "\n" >> $FAILURES
+            echo $name >> $FAILURES
+            head -n-2 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g' | awk '{print "    "$0}' >> $FAILURES
+        fi
+        echo -e "$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')" >> $RESULTS
     done
 }
 
@@ -60,24 +73,54 @@ buildReport() {
     echo "DOMA-TPC smoke test $(date --iso-8601=m)"
 
     if grep -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
-	echo
-	echo "SOUND ENDPOINTS"
-	echo
-	grep "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sed 's/:.*/ successfully./'
+        echo
+        echo "SOUND ENDPOINTS"
+        echo
+        grep "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sed 's/:.*/ successfully./'
     fi
 
     if grep -v -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
-	echo
-	echo "PROBLEMATIC ENDPOINTS"
-	echo
-	grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sort -k12nr
+        echo
+        echo "PROBLEMATIC ENDPOINTS"
+        echo
+        grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sort -k12nr
     fi
 
     if grep -q "\[\*\]" $SMOKE_OUTPUT; then
-	echo
-	echo "  [*]  Indicates one or more known issues with the software."
+        echo
+        echo "  [*]  Indicates one or more known issues with the software."
     fi
 } > $REPORT
+
+
+sendEmail() { # $1 - email address, $2 - subject
+    ## Rename the file as the filename is used as the attachment's name
+    FAILURES2=/tmp/smoke-test-details-$date.txt
+    cp $FAILURES $FAILURES2
+    FILES_TO_DELETE="$FILES_TO_DELETE $FAILURES2"
+
+    case $MAILER in
+        mail)
+            mail -s "$2" "$1" -A $FAILURES2 < $REPORT
+            ;;
+
+        thunderbird)
+            thunderbird -compose "subject='$2',to='$1',message='$REPORT',attachment='$FAILURES2'"
+
+            ## Unfortunately, the 'thunderbird' command returns
+            ## straight away and only reads any attachments when
+            ## sending the email.  Since this script will delete the
+            ## temporary files on exit, we must wait here until
+            ## thunderbird has sent the email.
+            echo "Press ENTER when email is sent."
+            read
+            ;;
+
+        *)
+            echo "Unknown mailer '$MAILER'"
+            ;;
+    esac
+}
 
 
 voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
@@ -91,13 +134,7 @@ buildReport
 if [ -n "$sendEmail" ]; then
     echo "Sending email to $sendEmail"
     date=$(date --iso-8601=m)
-
-    ## Rename the file as the filename is used as the attachment's name
-    FAILURES2=/tmp/smoke-test-details-$date.txt
-    cp $FAILURES $FAILURES2
-    FILES_TO_DELETE="$FILES_TO_DELETE $FAILURES2"
-
-    mail -s "Smoke test report $date" $sendEmail -A $FAILURES2 < $REPORT
+    sendEmail "$sendEmail" "Smoke test report $date"
 else
     cat $REPORT
     echo
