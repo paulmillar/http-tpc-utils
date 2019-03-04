@@ -3,7 +3,6 @@ BEIJING-LCG2   DPM             https://ccsrm.ihep.ac.cn/dpm/ihep.ac.cn/home/dtea
 BRUSSELS       dCache          https://maite.iihe.ac.be:2880/pnfs/iihe/dteam
 CA-IAAS        DynaFed[*]      https://dynafed02.heprc.uvic.ca:8443/tpc/
 CERN           EOS[*]          https://eosppshttp.cern.ch:443/eos/opstest
-CERN-CLOUD     DynaFed[*]      https://dynafed-atlas.cern.ch/data/cloud/tpc
 CERN-GRID      DynaFed[*]      https://dynafed-atlas.cern.ch/data/grid/tpc
 CERN-RC        DPM             https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 CERN-TRUNK     DPM             https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
