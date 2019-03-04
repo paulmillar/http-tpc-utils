@@ -34,6 +34,7 @@ FAILED=0
 SKIPPED=0
 
 fullRun=0
+extended=0
 
 fail() {
     if [ -z "$lastTestFailed" -o "$lastTestFailed" == "0" ]; then
@@ -423,16 +424,20 @@ for dependency in curl jq awk voms-proxy-info dig; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-while getopts "h?f" opt; do
+while getopts "h?fx" opt; do
     case "$opt" in
 	h|\?)
-	    echo "$0 [-f] URL"
+	    echo "$0 [-f] [-x] URL"
 	    echo
-	    echo "-f  Do not stop on first error"
+	    echo "  -f  Do not stop on first error"
+	    echo "  -x  Run additional tests"
 	    exit 0
 	    ;;
 	f)
 	    fullRun=1
+	    ;;
+	x)
+	    extended=1
 	    ;;
     esac
 done
@@ -530,6 +535,36 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 	checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     else
 	skipped "upload failed"
+    fi
+
+    echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with X.509 authn: "
+    if [ $extended -eq 0 ]; then
+	skipped "skippping extended tests"
+    elif [ $uploadFailed -eq 1 ]; then
+	skipped "upload failed"
+    else
+	eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+	checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+    fi
+
+    echo -n "Obtaining ADLER32 checksum via RFC 3230 GET request with X.509 authn: "
+    if [ $extended -eq 0 ]; then
+	skipped "skippping extended tests"
+    elif [ $uploadFailed -eq 1 ]; then
+	skipped "upload failed"
+    else
+	eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+	checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+    fi
+
+    echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 GET request with X.509 authn: "
+    if [ $extended -eq 0 ]; then
+	skipped "skippping extended tests"
+    elif [ $uploadFailed -eq 1 ]; then
+	skipped "upload failed"
+    else
+	eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+	checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
     fi
 
     echo -n "Deleting target with X.509 authn: "
