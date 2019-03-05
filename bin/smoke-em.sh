@@ -15,18 +15,20 @@ FAILURES=$(mktemp)
 REPORT=$(mktemp)
 FILES_TO_DELETE="$SMOKE_OUTPUT $RESULTS $FAILURES $REPORT"
 MAILER=mail
+EXTENDED_TESTS=0
 CLEAR_LINE="\e[2K"
 
 SOUND_ENDPOINT_RE="0 failed, 0 skipped"
 
 OUTPUT_DESCRIPTION="stdout"
-while getopts "h?s:m:" opt; do
+while getopts "h?s:m:x" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 [-s <addr> [-m <mailer>]]"
+            echo "$0 -x [-s <addr> [-m <mailer>]]"
             echo
             echo "    -s  send report as an email to <addr>"
             echo "    -m  use <mailer> to send email: 'mail' and 'thunderbird'"
+            echo "    -x  use extended tests, if supported"
             exit 0
             ;;
         s)
@@ -35,6 +37,9 @@ while getopts "h?s:m:" opt; do
             ;;
         m)
             MAILER="$OPTARG"
+            ;;
+        x)
+            EXTENDED_TESTS=1
             ;;
     esac
 done
@@ -62,14 +67,18 @@ runTests() {
     TOTAL=$(wc -l $BASE/etc/endpoints|awk '{print $1}')
     COUNT=1
     cat $BASE/etc/endpoints | while read name type url; do
-        case $type in
-            dCache|DPM|StoRM)
-                options="-f -x"
-                ;;
-            *)
-                options="-f"
-                ;;
-        esac
+        if [ $EXTENDED_TESTS -eq 1 ]; then
+            case $type in
+                dCache|DPM|StoRM)
+                    options="-f -x"
+                    ;;
+                *)
+                    options="-f"
+                    ;;
+            esac
+        else
+            options="-f"
+        fi
 
         echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
         COUNT=$(( $COUNT + 1 ))
