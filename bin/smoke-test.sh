@@ -38,27 +38,35 @@ extended=0
 
 fail() {
     if [ -z "$lastTestFailed" -o "$lastTestFailed" == "0" ]; then
-	error="$@"
+        error="$@"
     else
-	error="$(curlRcMessage)"
+        error="$(curlRcMessage)"
     fi
 
     if [ -f "$VERBOSE" ]; then
-	statusLine="$(sed -n 's/\* The requested URL returned error: //p' $VERBOSE | tail -1)"
-	if [ "$statusLine" != "" ]; then
-	    error="$statusLine"
-	fi
+        statusLine="$(sed -n 's/\* The requested URL returned error: //p' $VERBOSE | tail -1)"
+        if [ "$statusLine" != "" ]; then
+            error="$statusLine"
+        fi
     fi
-    echo -e "$RESET${RED}FAILED: $error$RESET"
+
+    local errorSuffix=
+    if [ "$NON_SUT_TEST" == "1" ]; then
+        errorSuffix=" (doesn't count)"
+    fi
+
+    echo -e "$RESET${RED}FAILED: $error$RESET$errorSuffix"
     if [ -f "$VERBOSE" -a $fullRun -eq 0 ]; then
         echo -e "\nVerbose output from curl:"
-	awk '{if ($0 ~ /HTTP\/1.1/){colour="\x1B[0m"}else{colour="\x1B[2m"}print "    "colour$0}' < $VERBOSE
-	echo -e "$RESET"
+        awk '{if ($0 ~ /HTTP\/1.1/){colour="\x1B[0m"}else{colour="\x1B[2m"}print "    "colour$0}' < $VERBOSE
+        echo -e "$RESET"
     fi
     if [ $fullRun -eq 0 ]; then
-	exit 1
+        exit 1
     fi
-    FAILED=$(( $FAILED + 1 ))
+    if [ "$NON_SUT_TEST" != "1" ]; then
+        FAILED=$(( $FAILED + 1 ))
+    fi
 }
 
 fatal() {
@@ -67,14 +75,28 @@ fatal() {
 }
 
 success() {
-    echo -e "${GREEN}SUCCESS$RESET"
+    local suffix=
+    if [ "$NON_SUT_TEST" == "1" ]; then
+        suffix=" (doesn't count)"
+    fi
+
+    echo -e "${GREEN}SUCCESS$RESET${suffix}"
     rm -f $VERBOSE
-    SUCCESSFUL=$(( $SUCCESSFUL + 1 ))
+    if [ "$NON_SUT_TEST" != "1" ]; then
+        SUCCESSFUL=$(( $SUCCESSFUL + 1 ))
+    fi
 }
 
 skipped() {
-    echo -e "$RESET${YELLOW}SKIPPED: $@$RESET"
-    SKIPPED=$(( $SKIPPED + 1 ))
+    local suffix=
+    if [ "$NON_SUT_TEST" == "1" ]; then
+        suffix=" (doesn't count)"
+    fi
+
+    echo -e "$RESET${YELLOW}SKIPPED: $@$RESET$suffix"
+    if [ "$NON_SUT_TEST" != "1" ]; then
+        SKIPPED=$(( $SKIPPED + 1 ))
+    fi
 }
 
 cleanup() {
@@ -84,254 +106,254 @@ cleanup() {
 
 curlRcMessage() {
     case $lastTestFailed in
-	0)
-	    echo "Success."
-	    ;;
-	1)
-	    echo "Unsupported protocol."
-	    ;;
-	2)
-	    echo "Failed to initialize."
-	    ;;
-	3)
-	    echo "URL malformed. The syntax was not correct."
-	    ;;
-	4)
-	    echo "A feature or option is not available."
-	    ;;
-	5)
-	    echo "Couldn't resolve proxy"
-	    ;;
-	6)
-	    echo "Couldn't resolve host"
-	    ;;
-	7)
-	    echo "Failed to connect to host."
-	    ;;
-	8)
-	    echo "Weird server reply."
-	    ;;
-	9)
-	    echo "FTP access denied."
-	    ;;
-	11|13)
-	    echo "FTP weird PASS reply."
-	    ;;
-	14)
-	    echo "FTP weird 227 format."
-	    ;;
-	15)
-	    echo "FTP can't get host."
-	    ;;
-	17)
-	    echo "FTP couldn't set binary."
-	    ;;
-	18)
-	    echo "Partial file."
-	    ;;
-	19)
-	    echo "RETR (or similar) command failed."
-	    ;;
-	21)
-	    echo "FTP quote error."
-	    ;;
-	22)
-	    echo "HTTP  page  not  retrieved."
-	    ;;
-	23)
-	    echo "Write error."
-	    ;;
-	25)
-	    echo "FTP couldn't STOR file."
-	    ;;
-	26)
-	    echo "Read error."
-	    ;;
-	27)
-	    echo "Out of memory."
-	    ;;
-	28)
-	    echo "Operation timeout."
-	    ;;
-	30)
-	    echo "FTP PORT failed."
-	    ;;
-	31)
-	    echo "FTP couldn't use REST."
-	    ;;
-	33)
-	    echo "HTTP range error."
-	    ;;
-	34)
-	    echo "HTTP post error."
-	    ;;
-	35)
-	    echo "SSL connect error."
-	    ;;
-	36)
-	    echo "FTP bad download resume."
-	    ;;
-	37)
-	    echo "FILE couldn't read file."
-	    ;;
-	38)
-	    echo "LDAP cannot bind."
-	    ;;
-	39)
-	    echo "LDAP search failed."
-	    ;;
-	41)
-	    echo "LDAP function not found."
-	    ;;
-	42)
-	    echo "Aborted by callback."
-	    ;;
-	43)
-	    echo "Function was called with a bad parameter."
-	    ;;
-	45)
-	    echo "Outgoing interface could not be used."
-	    ;;
-	47)
-	    echo "Too many redirects."
-	    ;;
-	48)
-	    echo "Unknown option specified to libcurl."
-	    ;;
-	49)
-	    echo "Malformed telnet option."
-	    ;;
-	51)
-	    echo "The peer's SSL certificate or SSH MD5 fingerprint was not OK."
-	    ;;
-	52)
-	    echo "The server didn't reply anything."
-	    ;;
-	53)
-	    echo "SSL crypto engine not found."
-	    ;;
-	54)
-	    echo "Cannot set SSL crypto engine as default."
-	    ;;
-	55)
-	    echo "Failed sending network data."
-	    ;;
-	56)
-	    echo "Failure in receiving network data."
-	    ;;
-	58)
-	    echo "Problem with the local certificate."
-	    ;;
-	59)
-	    echo "Couldn't use specified SSL cipher."
-	    ;;
-	60)
-	    echo "Peer certificate cannot be authenticated with known CA certificates."
-	    ;;
-	61)
-	    echo "Unrecognized transfer encoding."
-	    ;;
-	62)
-	    echo "Invalid LDAP URL."
-	    ;;
-	63)
-	    echo "Maximum file size exceeded."
-	    ;;
-	64)
-	    echo "Requested FTP SSL level failed."
-	    ;;
-	65)
-	    echo "Sending the data requires a rewind that failed."
-	    ;;
-	66)
-	    echo "Failed to initialise SSL Engine."
-	    ;;
-	67)
-	    echo "Failed to log in."
-	    ;;
-	68)
-	    echo "File not found on TFTP server."
-	    ;;
-	69)
-	    echo "Permission problem on TFTP server."
-	    ;;
-	70)
-	    echo "Out of disk space on TFTP server."
-	    ;;
-	71)
-	    echo "Illegal TFTP operation."
-	    ;;
-	72)
-	    echo "Unknown TFTP transfer ID."
-	    ;;
-	73)
-	    echo "File already exists (TFTP)."
-	    ;;
-	74)
-	    echo "No such user (TFTP)."
-	    ;;
-	75)
-	    echo "Character conversion failed."
-	    ;;
-	76)
-	    echo "Character conversion functions required."
-	    ;;
-	77)
-	    echo "Problem with reading the SSL CA cert."
-	    ;;
-	78)
-	    echo "The resource referenced in the URL does not exist."
-	    ;;
-	79)
-	    echo "An unspecified error occurred during the SSH session."
-	    ;;
-	80)
-	    echo "Failed to shut down the SSL connection."
-	    ;;
-	82)
-	    echo "Could not load CRL file."
-	    ;;
-	83)
-	    echo "Issuer check failed."
-	    ;;
-	84)
-	    echo "The FTP PRET command failed."
-	    ;;
-	85)
-	    echo "RTSP: mismatch of CSeq numbers."
-	    ;;
-	86)
-	    echo "RTSP: mismatch of Session Identifiers."
-	    ;;
-	87)
-	    echo "unable to parse FTP file list."
-	    ;;
-	88)
-	    echo "FTP chunk callback reported error."
-	    ;;
-	89)
-	    echo "No connection available, the session will be queued."
-	    ;;
-	90)
-	    echo "SSL public key does not matched pinned public key."
-	    ;;
-	*)
-	    echo "Unknown code: $lastTestFailed"
+        0)
+            echo "Success."
+            ;;
+        1)
+            echo "Unsupported protocol."
+            ;;
+        2)
+            echo "Failed to initialize."
+            ;;
+        3)
+            echo "URL malformed. The syntax was not correct."
+            ;;
+        4)
+            echo "A feature or option is not available."
+            ;;
+        5)
+            echo "Couldn't resolve proxy"
+            ;;
+        6)
+            echo "Couldn't resolve host"
+            ;;
+        7)
+            echo "Failed to connect to host."
+            ;;
+        8)
+            echo "Weird server reply."
+            ;;
+        9)
+            echo "FTP access denied."
+            ;;
+        11|13)
+            echo "FTP weird PASS reply."
+            ;;
+        14)
+            echo "FTP weird 227 format."
+            ;;
+        15)
+            echo "FTP can't get host."
+            ;;
+        17)
+            echo "FTP couldn't set binary."
+            ;;
+        18)
+            echo "Partial file."
+            ;;
+        19)
+            echo "RETR (or similar) command failed."
+            ;;
+        21)
+            echo "FTP quote error."
+            ;;
+        22)
+            echo "HTTP  page  not  retrieved."
+            ;;
+        23)
+            echo "Write error."
+            ;;
+        25)
+            echo "FTP couldn't STOR file."
+            ;;
+        26)
+            echo "Read error."
+            ;;
+        27)
+            echo "Out of memory."
+            ;;
+        28)
+            echo "Operation timeout."
+            ;;
+        30)
+            echo "FTP PORT failed."
+            ;;
+        31)
+            echo "FTP couldn't use REST."
+            ;;
+        33)
+            echo "HTTP range error."
+            ;;
+        34)
+            echo "HTTP post error."
+            ;;
+        35)
+            echo "SSL connect error."
+            ;;
+        36)
+            echo "FTP bad download resume."
+            ;;
+        37)
+            echo "FILE couldn't read file."
+            ;;
+        38)
+            echo "LDAP cannot bind."
+            ;;
+        39)
+            echo "LDAP search failed."
+            ;;
+        41)
+            echo "LDAP function not found."
+            ;;
+        42)
+            echo "Aborted by callback."
+            ;;
+        43)
+            echo "Function was called with a bad parameter."
+            ;;
+        45)
+            echo "Outgoing interface could not be used."
+            ;;
+        47)
+            echo "Too many redirects."
+            ;;
+        48)
+            echo "Unknown option specified to libcurl."
+            ;;
+        49)
+            echo "Malformed telnet option."
+            ;;
+        51)
+            echo "The peer's SSL certificate or SSH MD5 fingerprint was not OK."
+            ;;
+        52)
+            echo "The server didn't reply anything."
+            ;;
+        53)
+            echo "SSL crypto engine not found."
+            ;;
+        54)
+            echo "Cannot set SSL crypto engine as default."
+            ;;
+        55)
+            echo "Failed sending network data."
+            ;;
+        56)
+            echo "Failure in receiving network data."
+            ;;
+        58)
+            echo "Problem with the local certificate."
+            ;;
+        59)
+            echo "Couldn't use specified SSL cipher."
+            ;;
+        60)
+            echo "Peer certificate cannot be authenticated with known CA certificates."
+            ;;
+        61)
+            echo "Unrecognized transfer encoding."
+            ;;
+        62)
+            echo "Invalid LDAP URL."
+            ;;
+        63)
+            echo "Maximum file size exceeded."
+            ;;
+        64)
+            echo "Requested FTP SSL level failed."
+            ;;
+        65)
+            echo "Sending the data requires a rewind that failed."
+            ;;
+        66)
+            echo "Failed to initialise SSL Engine."
+            ;;
+        67)
+            echo "Failed to log in."
+            ;;
+        68)
+            echo "File not found on TFTP server."
+            ;;
+        69)
+            echo "Permission problem on TFTP server."
+            ;;
+        70)
+            echo "Out of disk space on TFTP server."
+            ;;
+        71)
+            echo "Illegal TFTP operation."
+            ;;
+        72)
+            echo "Unknown TFTP transfer ID."
+            ;;
+        73)
+            echo "File already exists (TFTP)."
+            ;;
+        74)
+            echo "No such user (TFTP)."
+            ;;
+        75)
+            echo "Character conversion failed."
+            ;;
+        76)
+            echo "Character conversion functions required."
+            ;;
+        77)
+            echo "Problem with reading the SSL CA cert."
+            ;;
+        78)
+            echo "The resource referenced in the URL does not exist."
+            ;;
+        79)
+            echo "An unspecified error occurred during the SSH session."
+            ;;
+        80)
+            echo "Failed to shut down the SSL connection."
+            ;;
+        82)
+            echo "Could not load CRL file."
+            ;;
+        83)
+            echo "Issuer check failed."
+            ;;
+        84)
+            echo "The FTP PRET command failed."
+            ;;
+        85)
+            echo "RTSP: mismatch of CSeq numbers."
+            ;;
+        86)
+            echo "RTSP: mismatch of Session Identifiers."
+            ;;
+        87)
+            echo "unable to parse FTP file list."
+            ;;
+        88)
+            echo "FTP chunk callback reported error."
+            ;;
+        89)
+            echo "No connection available, the session will be queued."
+            ;;
+        90)
+            echo "SSL public key does not matched pinned public key."
+            ;;
+        *)
+            echo "Unknown code: $lastTestFailed"
     esac
 }
 
 checkResult() {
     lastTestFailed=$?
     if [ $lastTestFailed -eq 0 ]; then
-	success
+        success
     else
-	fail "$1"
+        fail "$1"
     fi
 
     shift
 
     for var in "$@"; do
-	eval $var=$lastTestFailed
+        eval $var=$lastTestFailed
     done
 }
 
@@ -363,39 +385,47 @@ checkHeader() { # $1 - error if cmd fails, $2 - RE for headers, $3 error if RE d
 
 runCopy() {
     if [ $fullRun -eq 1 ]; then
-	echo -n ": "
-	eval "$@" 2>$VERBOSE >$COPY_OUTPUT
-	lastTestFailed=$?
+        echo -n ": "
+        eval "$@" 2>$VERBOSE >$COPY_OUTPUT
+        lastTestFailed=$?
     else
-	echo -e -n "...\n$DIM"
-	eval "$@" 2>$VERBOSE | tee $COPY_OUTPUT
-	lastTestFailed=$?
+        echo -e -n "...\n$DIM"
+        eval "$@" 2>$VERBOSE | tee $COPY_OUTPUT
+        lastTestFailed=$?
 
         # Insert newline if server COPY didn't include one (xrootd)
-	c=$(tail -c 1 $COPY_OUTPUT)
-	[ "$c" != "" ] && echo
+        c=$(tail -c 1 $COPY_OUTPUT)
+        [ "$c" != "" ] && echo
 
-	echo -e -n "${RESET}Third party copy: "
+        echo -e -n "${RESET}Third party copy: "
     fi
 
     if [ $lastTestFailed -ne 0 ]; then
-	fail "COPY request failed"
+        fail "COPY request failed"
     else
-	lastLine="$(tail -1 $COPY_OUTPUT)"
+        lastLine="$(tail -1 $COPY_OUTPUT)"
 
-	# REVISIT: shouldn't this be standardised?
-	if [ "${lastLine#success}" != "${lastLine}" ]; then
-	    success
-	elif [ "${lastLine#Success}" != "${lastLine}" ]; then # for DPM compatibility
-	    success
-	elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
-	    fail "${lastLine#failure:}"
-	else
-	    fail "for an unknown reason"
-	fi
+        # REVISIT: shouldn't this be standardised?
+        if [ "${lastLine#success}" != "${lastLine}" ]; then
+            success
+        elif [ "${lastLine#Success}" != "${lastLine}" ]; then # for DPM compatibility
+            success
+        elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
+            fail "${lastLine#failure:}"
+        else
+            fail "for an unknown reason"
+        fi
     fi
 }
 
+
+#  Like requestMacaroon but success or failure does not count towards
+#  endpoint's score.
+requestRemoteMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable for result
+    NON_SUT_TEST=1
+    requestMacaroon "$1" "$2" "$3" "$4"
+    unset NON_SUT_TEST
+}
 
 requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable for result
     local target_macaroon=$(mktemp)
@@ -408,13 +438,13 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable 
     eval $CURL_X509 -m$MACAROON_TIMEOUT -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
     checkFailure "Macaroon request failed." $4
     if [ $lastTestFailed -eq 0 ]; then
-	jq -r .macaroon $macaroon_json >$target_macaroon
-	checkFailure "Badly formatted JSON" $4
+        jq -r .macaroon $macaroon_json >$target_macaroon
+        checkFailure "Badly formatted JSON" $4
     fi
     if [ $lastTestFailed -eq 0 ]; then
-	macaroon="$(cat $target_macaroon)"
-	[ "$TARGET_MACAROON" != "null" ]
-	checkResult "Missing 'macaroon' element" $4
+        macaroon="$(cat $target_macaroon)"
+        [ "$TARGET_MACAROON" != "null" ]
+        checkResult "Missing 'macaroon' element" $4
     fi
 
     eval $3="$macaroon"
@@ -426,19 +456,19 @@ done
 
 while getopts "h?fx" opt; do
     case "$opt" in
-	h|\?)
-	    echo "$0 [-f] [-x] URL"
-	    echo
-	    echo "  -f  Do not stop on first error"
-	    echo "  -x  Run additional tests"
-	    exit 0
-	    ;;
-	f)
-	    fullRun=1
-	    ;;
-	x)
-	    extended=1
-	    ;;
+        h|\?)
+            echo "$0 [-f] [-x] URL"
+            echo
+            echo "  -f  Do not stop on first error"
+            echo "  -x  Run additional tests"
+            exit 0
+            ;;
+        f)
+            fullRun=1
+            ;;
+        x)
+            extended=1
+            ;;
     esac
 done
 
@@ -509,11 +539,11 @@ IP_ADDRESS_COUNTER=1
 for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     if [ $IP_ADDRESS_COUNT -gt 1 ]; then
-	[ $IP_ADDRESS_COUNTER -ne 1 ] && echo
-	echo "Checking $IP_ADDRESS ($IP_ADDRESS_COUNTER of $IP_ADDRESS_COUNT)"
-	echo
-	CURL_TARGET="--connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
-	IP_ADDRESS_COUNTER=$(( $IP_ADDRESS_COUNTER + 1 ))
+        [ $IP_ADDRESS_COUNTER -ne 1 ] && echo
+        echo "Checking $IP_ADDRESS ($IP_ADDRESS_COUNTER of $IP_ADDRESS_COUNT)"
+        echo
+        CURL_TARGET="--connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
+        IP_ADDRESS_COUNTER=$(( $IP_ADDRESS_COUNTER + 1 ))
     fi
 
     echo -n "Uploading to target with X.509 authn: "
@@ -523,52 +553,52 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     echo -n "Downloading from target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-	eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
-	checkResult "Download failed"
+        eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+        checkResult "Download failed"
     else
-	skipped "upload failed"
+        skipped "upload failed"
     fi
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-	eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-	checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+        eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     else
-	skipped "upload failed"
+        skipped "upload failed"
     fi
 
     if [ $extended -ne 0 ]; then
         echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 HEAD request with X.509 authn: "
         if [ $uploadFailed -ne 0 ]; then
-	    skipped "upload failed"
+            skipped "upload failed"
         else
-	    eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-	    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+            eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
 
         echo -n "Obtaining ADLER32 checksum via RFC 3230 GET request with X.509 authn: "
         if [ $uploadFailed -ne 0 ]; then
-	    skipped "upload failed"
+            skipped "upload failed"
         else
-	    eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-	    checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+            eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+            checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
         fi
 
         echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 GET request with X.509 authn: "
         if [ $uploadFailed -ne 0 ]; then
-	    skipped "upload failed"
+            skipped "upload failed"
         else
-	    eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-	    checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+            eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
     fi
 
     echo -n "Deleting target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-	eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
-	checkResult "Delete failed"
+        eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        checkResult "Delete failed"
     else
-	skipped "upload failed"
+        skipped "upload failed"
     fi
 
     echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
@@ -578,41 +608,41 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     echo -n "Uploading to target with macaroon authz: "
     if [ $macaroonFailed -eq 0 ]; then
-	eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
-	checkResult "Upload failed" uploadFailed
-	[ $uploadFailed -ne 0 ] && eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+        eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+        checkResult "Upload failed" uploadFailed
+        [ $uploadFailed -ne 0 ] && eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
-	skipped "no macaroon"
+        skipped "no macaroon"
     fi
 
     echo -n "Downloading from target with macaroon authz: "
     if [ $macaroonFailed -ne 0 ]; then
-	skipped "no macaroon"
+        skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
-	skipped "upload failed"
+        skipped "upload failed"
     else
-	eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
-	checkResult "Download failed"
+        eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+        checkResult "Download failed"
     fi
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
     if [ $macaroonFailed -ne 0 ]; then
-	skipped "no macaroon"
+        skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
-	skipped "upload failed"
+        skipped "upload failed"
     else
-	eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-	checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+        eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     fi
 
     echo -n "Deleting target with macaroon authz: "
     if [ $macaroonFailed -ne 0 ]; then
-	skipped "no macaroon"
+        skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
-	skipped "upload failed"
+        skipped "upload failed"
     else
-	eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
-	checkResult "Delete failed"
+        eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
+        checkResult "Delete failed"
     fi
 
 done
@@ -649,7 +679,7 @@ else
 fi
 
 echo -n "Requesting (from prometheus) DOWNLOAD macaroon for a private file: "
-requestMacaroon DOWNLOAD $THIRDPARTY_PRIVATE_URL THIRDPARTY_DOWNLOAD_MACAROON tpcDownloadMacaroonFailed
+requestRemoteMacaroon DOWNLOAD $THIRDPARTY_PRIVATE_URL THIRDPARTY_DOWNLOAD_MACAROON tpcDownloadMacaroonFailed
 
 echo -n "Initiating a macaroon authz HTTP PULL, authn with X.509 to target"
 if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
@@ -702,7 +732,7 @@ echo "Third party push target: $THIRDPARTY_UPLOAD_URL"
 echo
 
 echo -n "Requesting (from prometheus) UPLOAD,DELETE macaroon to third party push target: "
-requestMacaroon UPLOAD,DELETE $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
+requestRemoteMacaroon UPLOAD,DELETE $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
 
 echo -n "Uploading target, authn with X.509: "
 if [ $tpcUploadMacaroonFailed -ne 0 ]; then
@@ -778,10 +808,10 @@ if [ $fullRun -eq 1 ]; then
     echo
     echo -n "$(( $SUCCESSFUL + $FAILED )) tests completed: $SUCCESSFUL successful"
     if [ $FAILED -gt 0 -o $SKIPPED -gt 0 ]; then
-	echo -n " ("
-	echo -n "$(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED ) )) )% of tests run"
-	echo -n ", $(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED + $SKIPPED ) )) )% of possible tests"
-	echo -n ")"
+        echo -n " ("
+        echo -n "$(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED ) )) )% of tests run"
+        echo -n ", $(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED + $SKIPPED ) )) )% of possible tests"
+        echo -n ")"
     fi
     echo -n ", $FAILED failed, $SKIPPED skipped"
 fi
