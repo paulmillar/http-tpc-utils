@@ -18,7 +18,7 @@ MAILER=mail
 EXTENDED_TESTS=0
 CLEAR_LINE="\e[2K"
 
-SOUND_ENDPOINT_RE="0 failed, 0 skipped"
+SOUND_ENDPOINT_RE="successful (100%)"
 
 OUTPUT_DESCRIPTION="stdout"
 while getopts "h?s:m:x" opt; do
@@ -89,7 +89,10 @@ runTests() {
             echo $name >> $FAILURES
             head -n-2 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g' | awk '{print "    "$0}' >> $FAILURES
         fi
-        echo -e "$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')" >> $RESULTS
+	testCount=$(sed -n 's/^Of \([0-9]*\) tests.*/\1/p' $SMOKE_OUTPUT)
+	testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
+	testNonSuccessful=$(( $testCount - $testSuccess ))
+        echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')" >> $RESULTS
     done
     echo -n -e "${CLEAR_LINE}"
 }
@@ -99,18 +102,20 @@ buildReport() {
 
     echo "DOMA-TPC smoke test $(date --iso-8601=m)"
 
+    offset=$(head -1 $SMOKE_OUTPUT | sed 's/^\([0-9]* *\).*/\1/' | wc -c)
+    
     if grep -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
         echo
         echo "SOUND ENDPOINTS"
         echo
-        grep "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sed 's/:.*/ successfully./'
+        grep "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sed 's/ *Of [0-9]* tests:.*//' | cut -c${offset}-
     fi
 
     if grep -v -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
         echo
         echo "PROBLEMATIC ENDPOINTS"
         echo
-        grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sort -k12nr
+        grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sort -k1n | cut -c${offset}-
     fi
 
     if grep -q "\[\*\]" $SMOKE_OUTPUT; then

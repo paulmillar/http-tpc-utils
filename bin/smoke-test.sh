@@ -805,15 +805,43 @@ else
 fi
 
 if [ $fullRun -eq 1 ]; then
+    TOTAL=$(( $SUCCESSFUL + $FAILED + $SKIPPED ))
+    ATTEMPTED=$(( $SUCCESSFUL + $FAILED ))
     echo
-    echo -n "$(( $SUCCESSFUL + $FAILED )) tests completed: $SUCCESSFUL successful"
-    if [ $FAILED -gt 0 -o $SKIPPED -gt 0 ]; then
+    echo -n "Of $TOTAL tests: "
+    if [ $SKIPPED -ne 0 ]; then
+	echo -n "$SKIPPED skipped"
+	if [ $SKIPPED -ne $TOTAL ]; then
+            echo -n " ("
+            echo -n "$(printf "%.0f" $(( 100 * $SKIPPED / $TOTAL )) )%"
+            echo -n ")"
+	fi
+
+	echo -n ", $ATTEMPTED attempted"
         echo -n " ("
-        echo -n "$(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED ) )) )% of tests run"
-        echo -n ", $(printf "%.0f" $(( 100 * $SUCCESSFUL / ( $SUCCESSFUL + $FAILED + $SKIPPED ) )) )% of possible tests"
+        echo -n "$(printf "%.0f" $(( 100 * $ATTEMPTED / $TOTAL )) )%"
+        echo -n "): "
+    fi
+    echo -n "$SUCCESSFUL successful"
+    if [ $SUCCESSFUL -ne 0 ]; then
+        echo -n " ("
+        echo -n "$(printf "%.0f" $(( 100 * $SUCCESSFUL / $ATTEMPTED )) )%"
+	if [ $ATTEMPTED -ne $TOTAL ]; then
+            echo -n " of tests run, $(printf "%.0f" $(( 100 * $SUCCESSFUL / $TOTAL )) )% of all tests"
+	fi
         echo -n ")"
     fi
-    echo -n ", $FAILED failed, $SKIPPED skipped"
+    if [ $FAILED -ne 0 ]; then
+	echo -n ", $FAILED failed"
+	if [ $FAILED -ne $TOTAL ]; then
+            echo -n " ("
+            echo -n "$(printf "%.0f" $(( 100 * $FAILED / $ATTEMPTED )) )%"
+	    if [ $ATTEMPTED -ne $TOTAL ]; then
+		echo -n " of tests run, $(printf "%.0f" $(( 100 * $FAILED / $TOTAL )) )% of all tests"
+	    fi
+            echo -n ")"
+	fi
+    fi
 fi
 
 rc=0
