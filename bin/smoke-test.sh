@@ -527,7 +527,10 @@ echo
 echo "DIRECT TRANSFER TESTS"
 echo
 
-ALL_IP_ADDRESSES=$(dig $DIG_OPTIONS $HOST | awk '/ANSWER SECTION:/,/^$/{ if ($4 ~ /^A$/) print $5}' | sort | uniq)
+IPv4_ADDRESSES=$(dig +short $HOST A | grep '^[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*$')
+#  2019-03-11 Problem in desktop IPv6 support, so let's leave IPv6 out for now.
+#IPv6_ADDRESSES=$(dig +short $HOST AAAA | grep '^[0-9a-f:]*$')
+ALL_IP_ADDRESSES="$IPv4_ADDRESSES $IPv6_ADDRESSES"
 IP_ADDRESS_COUNT=$(echo "$ALL_IP_ADDRESSES" | wc -w)
 
 if [ $IP_ADDRESS_COUNT -eq 0 ]; then
@@ -542,7 +545,12 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         [ $IP_ADDRESS_COUNTER -ne 1 ] && echo
         echo "Checking $IP_ADDRESS ($IP_ADDRESS_COUNTER of $IP_ADDRESS_COUNT)"
         echo
-        CURL_TARGET="--connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
+	unset IP_FAMILY
+	echo $IP_ADDRESS | grep -q '\.' && IP_FAMILY="ipv4" || IP_FAMILY="ipv6"
+	if [ $IP_FAMILY = "ipv6" ]; then
+	    IP_ADDRESS="[${IP_ADDRESS}]"
+	fi
+        CURL_TARGET="--$IP_FAMILY --connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
         IP_ADDRESS_COUNTER=$(( $IP_ADDRESS_COUNTER + 1 ))
     fi
 
