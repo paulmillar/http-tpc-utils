@@ -1,5 +1,4 @@
 AGLT2          dCache          https://head01.aglt2.org:2880/pnfs/aglt2.org/dteam
-BEIJING-LCG2   DPM             https://ccsrm.ihep.ac.cn/dpm/ihep.ac.cn/home/dteam
 BEIJING-TEST   DPM             https://dpmtest.ihep.ac.cn/dpm/ihep.ac.cn/home/dteam
 BRUSSELS       dCache          https://maite.iihe.ac.be:2880/pnfs/iihe/dteam
 CA-IAAS        DynaFed[*]      https://dynafed02.heprc.uvic.ca:8443/tpc/
