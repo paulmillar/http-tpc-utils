@@ -506,7 +506,7 @@ COPY_OUTPUT=$(mktemp)
 FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT $HEADERS"
 trap cleanup EXIT
 
-CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L --capath /etc/grid-security/certificates $CURL_EXTRA_OPTIONS"
+CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L --capath /etc/grid-security/certificates \$CURL_ADDRESS_SELECTION $CURL_EXTRA_OPTIONS"
 CURL_BASE="$CURL_BASE -H 'X-No-Delegate: true'"  # Tell DPM not to request GridSite delegation.
 CURL_BASE="$CURL_BASE --location-trusted"        # SLAC xrootd redirects, expecting re-authentication.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
@@ -528,8 +528,7 @@ echo "DIRECT TRANSFER TESTS"
 echo
 
 IPv4_ADDRESSES=$(dig +short $HOST A | grep '^[0-9]*\.[0-9]*\.[0-9]*\.[0-9]*$')
-#  2019-03-11 Problem in desktop IPv6 support, so let's leave IPv6 out for now.
-#IPv6_ADDRESSES=$(dig +short $HOST AAAA | grep '^[0-9a-f:]*$')
+IPv6_ADDRESSES=$(dig +short $HOST AAAA | grep '^[0-9a-f:]*$')
 ALL_IP_ADDRESSES="$IPv4_ADDRESSES $IPv6_ADDRESSES"
 IP_ADDRESS_COUNT=$(echo "$ALL_IP_ADDRESSES" | wc -w)
 
@@ -550,18 +549,18 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 	if [ $IP_FAMILY = "ipv6" ]; then
 	    IP_ADDRESS="[${IP_ADDRESS}]"
 	fi
-        CURL_TARGET="--$IP_FAMILY --connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
+        CURL_ADDRESS_SELECTION="--$IP_FAMILY --connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
         IP_ADDRESS_COUNTER=$(( $IP_ADDRESS_COUNTER + 1 ))
     fi
 
     echo -n "Uploading to target with X.509 authn: "
-    eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+    eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" uploadFailed
-    [ $uploadFailed -ne 0 ] && eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+    [ $uploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 
     echo -n "Downloading from target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        eval $CURL_X509 $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+        eval $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Download failed"
     else
         skipped "upload failed"
@@ -569,7 +568,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        eval $CURL_X509 -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     else
         skipped "upload failed"
@@ -580,7 +579,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            eval $CURL_X509 $CURL_TARGET -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            eval $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
 
@@ -588,7 +587,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+            eval $CURL_X509 -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
         fi
 
@@ -596,14 +595,14 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            eval $CURL_X509 $CURL_TARGET -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            eval $CURL_X509 -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
     fi
 
     echo -n "Deleting target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        eval $CURL_X509 $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Delete failed"
     else
         skipped "upload failed"
@@ -612,13 +611,13 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
     requestMacaroon DOWNLOAD,UPLOAD,DELETE $FILE_URL TARGET_MACAROON macaroonFailed
 
-    CURL_MACAROON="$CURL_BASE $CURL_TARGET -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
+    CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
 
     echo -n "Uploading to target with macaroon authz: "
     if [ $macaroonFailed -eq 0 ]; then
-        eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+        eval $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Upload failed" uploadFailed
-        [ $uploadFailed -ne 0 ] && eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+        [ $uploadFailed -ne 0 ] && eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
         skipped "no macaroon"
     fi
@@ -629,7 +628,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        eval $CURL_MACAROON $CURL_TARGET $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+        eval $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Download failed"
     fi
 
@@ -639,7 +638,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        eval $CURL_MACAROON $CURL_TARGET -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        eval $CURL_MACAROON -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     fi
 
@@ -649,11 +648,13 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        eval $CURL_MACAROON $CURL_TARGET -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
+        eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
         checkResult "Delete failed"
     fi
 
 done
+
+unset CURL_ADDRESS_SELECTION
 
 echo
 echo "THIRD PARTY PULL TESTS"
