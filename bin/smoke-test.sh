@@ -443,7 +443,7 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable 
     fi
     if [ $lastTestFailed -eq 0 ]; then
         macaroon="$(cat $target_macaroon)"
-        [ "$TARGET_MACAROON" != "null" ]
+        [ "$macaroon" != "null" ]
         checkResult "Missing 'macaroon' element" $4
     fi
 
@@ -609,7 +609,12 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     fi
 
     echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
-    requestMacaroon DOWNLOAD,UPLOAD,DELETE $FILE_URL TARGET_MACAROON macaroonFailed
+    requestMacaroon DOWNLOAD,UPLOAD,DELETE $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
+
+    if [ $thisAddrMacaroonFailed -eq 0 ]; then
+	macaroonFailed=0
+	TARGET_MACAROON="$THIS_ADDR_TARGET_MACAROON"
+    fi
 
     CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
 
