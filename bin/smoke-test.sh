@@ -609,7 +609,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     fi
 
     echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
-    requestMacaroon DOWNLOAD,UPLOAD,DELETE $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
+    requestMacaroon DOWNLOAD,UPLOAD,DELETE,LIST $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
 
     if [ $thisAddrMacaroonFailed -eq 0 ]; then
 	macaroonFailed=0
