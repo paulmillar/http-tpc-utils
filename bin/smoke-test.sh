@@ -608,7 +608,8 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         skipped "upload failed"
     fi
 
-    activityList="DOWNLOAD,UPLOAD,DELETE,LIST"
+    activityList="DOWNLOAD,UPLOAD,DELETE"
+    activityList="$activityList,LIST"   # DPM requires LIST for an RFC-3230 HEAD requests
     echo -n "Request $activityList macaroon from target: "
     requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
 
