@@ -608,8 +608,9 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         skipped "upload failed"
     fi
 
-    echo -n "Request DOWNLOAD,UPLOAD,DELETE macaroon from target: "
-    requestMacaroon DOWNLOAD,UPLOAD,DELETE,LIST $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
+    activityList="DOWNLOAD,UPLOAD,DELETE,LIST"
+    echo -n "Request $activityList macaroon from target: "
+    requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
 
     if [ $thisAddrMacaroonFailed -eq 0 ]; then
 	macaroonFailed=0
