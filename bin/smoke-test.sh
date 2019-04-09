@@ -57,6 +57,8 @@ fail() {
 
     echo -e "$RESET${RED}FAILED: $error$RESET$errorSuffix"
     if [ -f "$VERBOSE" -a $fullRun -eq 0 ]; then
+        echo -e "\nThe curl command that failed:"
+        echo -e "\n    $TEST_COMMAND"
         echo -e "\nVerbose output from curl:"
         awk '{if ($0 ~ /HTTP\/1.1/){colour="\x1B[0m"}else{colour="\x1B[2m"}print "    "colour$0}' < $VERBOSE
         echo -e "$RESET"
@@ -383,14 +385,21 @@ checkHeader() { # $1 - error if cmd fails, $2 - RE for headers, $3 error if RE d
     fi
 }
 
+#  Simple wrapper around a curl invocation that "remembers" the
+#  command-line.
+doCurl() {
+    TEST_COMMAND=$(eval echo "$@")
+    eval "$@"
+}
+
 runCopy() {
     if [ $fullRun -eq 1 ]; then
         echo -n ": "
-        eval "$@" 2>$VERBOSE >$COPY_OUTPUT
+        doCurl "$@" 2>$VERBOSE >$COPY_OUTPUT
         lastTestFailed=$?
     else
         echo -e -n "...\n$DIM"
-        eval "$@" 2>$VERBOSE | tee $COPY_OUTPUT
+        doCurl "$@" 2>$VERBOSE | tee $COPY_OUTPUT
         lastTestFailed=$?
 
         # Insert newline if server COPY didn't include one (xrootd)
@@ -418,7 +427,6 @@ runCopy() {
     fi
 }
 
-
 #  Like requestMacaroon but success or failure does not count towards
 #  endpoint's score.
 requestRemoteMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable for result
@@ -435,7 +443,7 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable 
 
     lastTestFailed=0
 
-    eval $CURL_X509 -m$MACAROON_TIMEOUT -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
+    doCurl $CURL_X509 -m$MACAROON_TIMEOUT -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
     checkFailure "Macaroon request failed." $4
     if [ $lastTestFailed -eq 0 ]; then
         jq -r .macaroon $macaroon_json >$target_macaroon
@@ -544,23 +552,23 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         [ $IP_ADDRESS_COUNTER -ne 1 ] && echo
         echo "Checking $IP_ADDRESS ($IP_ADDRESS_COUNTER of $IP_ADDRESS_COUNT)"
         echo
-	unset IP_FAMILY
-	echo $IP_ADDRESS | grep -q '\.' && IP_FAMILY="ipv4" || IP_FAMILY="ipv6"
-	if [ $IP_FAMILY = "ipv6" ]; then
-	    IP_ADDRESS="[${IP_ADDRESS}]"
-	fi
+        unset IP_FAMILY
+        echo $IP_ADDRESS | grep -q '\.' && IP_FAMILY="ipv4" || IP_FAMILY="ipv6"
+        if [ $IP_FAMILY = "ipv6" ]; then
+            IP_ADDRESS="[${IP_ADDRESS}]"
+        fi
         CURL_ADDRESS_SELECTION="--$IP_FAMILY --connect-to $HOST:$PORT:$IP_ADDRESS:$PORT"
         IP_ADDRESS_COUNTER=$(( $IP_ADDRESS_COUNTER + 1 ))
     fi
 
     echo -n "Uploading to target with X.509 authn: "
-    eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" uploadFailed
     [ $uploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 
     echo -n "Downloading from target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        eval $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Download failed"
     else
         skipped "upload failed"
@@ -568,7 +576,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        eval $CURL_X509 -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_X509 -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     else
         skipped "upload failed"
@@ -579,7 +587,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            eval $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            doCurl $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
 
@@ -587,7 +595,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            eval $CURL_X509 -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+            doCurl $CURL_X509 -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
         fi
 
@@ -595,14 +603,14 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            eval $CURL_X509 -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            doCurl $CURL_X509 -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
     fi
 
     echo -n "Deleting target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Delete failed"
     else
         skipped "upload failed"
@@ -614,15 +622,15 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
 
     if [ $thisAddrMacaroonFailed -eq 0 ]; then
-	macaroonFailed=0
-	TARGET_MACAROON="$THIS_ADDR_TARGET_MACAROON"
+        macaroonFailed=0
+        TARGET_MACAROON="$THIS_ADDR_TARGET_MACAROON"
     fi
 
     CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
 
     echo -n "Uploading to target with macaroon authz: "
     if [ $macaroonFailed -eq 0 ]; then
-        eval $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Upload failed" uploadFailed
         [ $uploadFailed -ne 0 ] && eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
@@ -635,7 +643,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        eval $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Download failed"
     fi
 
@@ -645,7 +653,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        eval $CURL_MACAROON -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_MACAROON -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     fi
 
@@ -655,7 +663,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
+        doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
         checkResult "Delete failed"
     fi
 
@@ -674,7 +682,7 @@ echo -n "Deleting target with X.509: "
 if [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
-    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 fi
 
 echo -n "Initiating an unauthenticated HTTP PULL, authz with macaroon to target"
@@ -691,7 +699,7 @@ if [ $macaroonFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
-    eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 fi
 
 echo -n "Requesting (from prometheus) DOWNLOAD macaroon for a private file: "
@@ -711,7 +719,7 @@ if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "third-party transfer failed"
 else
-    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult
 fi
 
@@ -734,7 +742,7 @@ elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "third-party transfer failed"
 else
-    eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult
 fi
 
@@ -754,7 +762,7 @@ echo -n "Uploading target, authn with X.509: "
 if [ $tpcUploadMacaroonFailed -ne 0 ]; then
     skipped "no third-party macaroon"
 else
-    eval $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" sourceUploadFailed
     [ $sourceUploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 fi
@@ -778,7 +786,7 @@ elif [ $sourceUploadFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "push failed"
 else
-    eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+    doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
     checkResult "delete failed"
 fi
 
@@ -806,7 +814,7 @@ elif [ $sourceUploadFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "push failed"
 else
-    eval $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+    doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
     checkResult "delete failed"
 fi
 
@@ -816,7 +824,7 @@ if [ $tpcUploadMacaroonFailed -ne 0 ]; then
 elif [ $sourceUploadFailed -ne 0 ]; then
     skipped "source upload failed"
 else
-    eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "delete failed"
 fi
 
@@ -826,14 +834,14 @@ if [ $fullRun -eq 1 ]; then
     echo
     echo -n "Of $TOTAL tests: "
     if [ $SKIPPED -ne 0 ]; then
-	echo -n "$SKIPPED skipped"
-	if [ $SKIPPED -ne $TOTAL ]; then
+        echo -n "$SKIPPED skipped"
+        if [ $SKIPPED -ne $TOTAL ]; then
             echo -n " ("
             echo -n "$(printf "%.0f" $(( 100 * $SKIPPED / $TOTAL )) )%"
             echo -n ")"
-	fi
+        fi
 
-	echo -n ", $ATTEMPTED attempted"
+        echo -n ", $ATTEMPTED attempted"
         echo -n " ("
         echo -n "$(printf "%.0f" $(( 100 * $ATTEMPTED / $TOTAL )) )%"
         echo -n "): "
@@ -842,21 +850,21 @@ if [ $fullRun -eq 1 ]; then
     if [ $SUCCESSFUL -ne 0 ]; then
         echo -n " ("
         echo -n "$(printf "%.0f" $(( 100 * $SUCCESSFUL / $ATTEMPTED )) )%"
-	if [ $ATTEMPTED -ne $TOTAL ]; then
+        if [ $ATTEMPTED -ne $TOTAL ]; then
             echo -n " of tests run, $(printf "%.0f" $(( 100 * $SUCCESSFUL / $TOTAL )) )% of all tests"
-	fi
+        fi
         echo -n ")"
     fi
     if [ $FAILED -ne 0 ]; then
-	echo -n ", $FAILED failed"
-	if [ $FAILED -ne $TOTAL ]; then
+        echo -n ", $FAILED failed"
+        if [ $FAILED -ne $TOTAL ]; then
             echo -n " ("
             echo -n "$(printf "%.0f" $(( 100 * $FAILED / $ATTEMPTED )) )%"
-	    if [ $ATTEMPTED -ne $TOTAL ]; then
-		echo -n " of tests run, $(printf "%.0f" $(( 100 * $FAILED / $TOTAL )) )% of all tests"
-	    fi
+            if [ $ATTEMPTED -ne $TOTAL ]; then
+                echo -n " of tests run, $(printf "%.0f" $(( 100 * $FAILED / $TOTAL )) )% of all tests"
+            fi
             echo -n ")"
-	fi
+        fi
     fi
 fi
 
