@@ -83,42 +83,50 @@ runTests() {
         echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
         COUNT=$(( $COUNT + 1 ))
 
+        startTime=$(date +%s)
         bin/smoke-test.sh $options $url > $SMOKE_OUTPUT
-        if [ $? -ne 0 ]; then
+        result=$?
+        elapsedTime=$(( $(date +%s) - $startTime ))
+        duration=$(printf "%02d:%02d" $(($elapsedTime/60)) $(($elapsedTime%60)))
+        if [ $result -ne 0 ]; then
             [ -s $FAILURES ] && echo -e "\n" >> $FAILURES
             echo $name >> $FAILURES
             head -n-2 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g' | awk '{print "    "$0}' >> $FAILURES
         fi
-	testCount=$(sed -n 's/^Of \([0-9]*\) tests.*/\1/p' $SMOKE_OUTPUT)
-	testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
-	testNonSuccessful=$(( $testCount - $testSuccess ))
-        echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')" >> $RESULTS
+        testCount=$(sed -n 's/^Of \([0-9]*\) tests.*/\1/p' $SMOKE_OUTPUT)
+        testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
+        testNonSuccessful=$(( $testCount - $testSuccess ))
+        echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
     done
     echo -n -e "${CLEAR_LINE}"
 }
 
 buildReport() {
-    column -t $RESULTS -s $'\t' > $SMOKE_OUTPUT
-
     echo "DOMA-TPC smoke test $(date --iso-8601=m)"
 
-    offset=$(head -1 $SMOKE_OUTPUT | sed 's/^\([0-9]* *\).*/\1/' | wc -c)
-    
-    if grep -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
+    if grep -q "$SOUND_ENDPOINT_RE" $RESULTS; then
         echo
         echo "SOUND ENDPOINTS"
         echo
-        grep "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sed 's/ *Of [0-9]* tests:.*//' | cut -c${offset}-
+        grep "$SOUND_ENDPOINT_RE" $RESULTS \
+            | cut -f2- \
+            | sed 's/ *Of [0-9]* tests:.*\(\[in .*\]\)/\t\1/' \
+            > $SMOKE_OUTPUT
+        column -t $SMOKE_OUTPUT -s $'\t'
     fi
 
-    if grep -v -q "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT; then
+    if grep -v -q "$SOUND_ENDPOINT_RE" $RESULTS; then
         echo
         echo "PROBLEMATIC ENDPOINTS"
         echo
-        grep -v "$SOUND_ENDPOINT_RE" $SMOKE_OUTPUT | sort -k1n | cut -c${offset}-
+        grep -v "$SOUND_ENDPOINT_RE" $RESULTS \
+            | sort -k1n \
+            | cut -f2- \
+            > $SMOKE_OUTPUT
+        column -t $SMOKE_OUTPUT -s $'\t'
     fi
 
-    if grep -q "\[\*\]" $SMOKE_OUTPUT; then
+    if grep -q "\[\*\]" $RESULTS; then
         echo
         echo "  [*]  Indicates one or more known issues with the software."
     fi
@@ -126,7 +134,7 @@ buildReport() {
 
 
 sendEmail() { # $1 - email address, $2 - subject
-    ## Rename the file as the filename is used as the attachment's name
+    ## Rename the file because the filename is used as the attachment's name
     FAILURES2=/tmp/smoke-test-details-$date.txt
     cp $FAILURES $FAILURES2
     FILES_TO_DELETE="$FILES_TO_DELETE $FAILURES2"
