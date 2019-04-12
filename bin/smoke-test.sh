@@ -462,7 +462,8 @@ for dependency in curl jq awk voms-proxy-info dig; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-while getopts "h?fx" opt; do
+CURL_RDR_TRUST="--location-trusted"
+while getopts "h?fxl" opt; do
     case "$opt" in
         h|\?)
             echo "$0 [-f] [-x] URL"
@@ -476,6 +477,9 @@ while getopts "h?fx" opt; do
             ;;
         x)
             extended=1
+            ;;
+	l)
+            CURL_RDR_TRUST=""
             ;;
     esac
 done
@@ -516,7 +520,7 @@ trap cleanup EXIT
 
 CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L --capath /etc/grid-security/certificates \$CURL_ADDRESS_SELECTION $CURL_EXTRA_OPTIONS"
 CURL_BASE="$CURL_BASE -H 'X-No-Delegate: true'"  # Tell DPM not to request GridSite delegation.
-CURL_BASE="$CURL_BASE --location-trusted"        # SLAC xrootd redirects, expecting re-authentication.
+CURL_BASE="$CURL_BASE $CURL_RDR_TRUST"        # SLAC xrootd redirects, expecting re-authentication.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
 CURL_X509="$CURL_X509 -H 'Credential: none'"     # Tell dCache not to request GridSite delegation.
 
