@@ -501,7 +501,12 @@ fi
 voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
 
-PROXY=/tmp/x509up_u$(id -u)
+if [ "x$X509_USER_PROXY" == "x" ]; then
+  PROXY=/tmp/x509up_u$(id -u)
+else
+  echo "Using proxy certificate at $X509_USER_PROXY"
+  PROXY=$X509_USER_PROXY
+fi
 
 
 VERBOSE=$(mktemp)
