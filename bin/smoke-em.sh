@@ -66,7 +66,7 @@ runTests() {
 
     TOTAL=$(wc -l $BASE/etc/endpoints|awk '{print $1}')
     COUNT=1
-    cat $BASE/etc/endpoints | while read name type url; do
+    cat $BASE/etc/endpoints | while read name type workarounds url; do
         if [ $EXTENDED_TESTS -eq 1 ]; then
             case $type in
                 dCache|DPM|StoRM)
@@ -79,6 +79,16 @@ runTests() {
         else
             options="-f"
         fi
+
+	if [ "$workarounds" == "-" ]; then
+	    unset hasWorkaround
+	else
+	    hasWorkaround="[*]"
+	fi
+
+	if [[ "$workarounds" == *L* ]]; then
+	    options="$options -L"
+	fi
 
         echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
         COUNT=$(( $COUNT + 1 ))
@@ -96,7 +106,7 @@ runTests() {
         testCount=$(sed -n 's/^Of \([0-9]*\) tests.*/\1/p' $SMOKE_OUTPUT)
         testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
         testNonSuccessful=$(( $testCount - $testSuccess ))
-        echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
+        echo -e "$testNonSuccessful\t$name\t$type$hasWorkaround\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
     done
     echo -n -e "${CLEAR_LINE}"
 }
@@ -128,7 +138,7 @@ buildReport() {
 
     if grep -q "\[\*\]" $RESULTS; then
         echo
-        echo "  [*]  Indicates one or more known issues with the software."
+        echo "  [*]  Indicates one or more work-arounds were deployed."
     fi
 } > $REPORT
 
