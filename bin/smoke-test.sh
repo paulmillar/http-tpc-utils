@@ -462,8 +462,7 @@ for dependency in curl jq awk voms-proxy-info dig; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-CURL_RDR_TRUST="--location-trusted"
-while getopts "h?fxl" opt; do
+while getopts "h?fxlL" opt; do
     case "$opt" in
         h|\?)
             echo "$0 [-f] [-x] URL"
@@ -481,6 +480,9 @@ while getopts "h?fxl" opt; do
 	l)
             CURL_RDR_TRUST=""
             ;;
+	L)
+	    CURL_RDR_TRUST="--location-trusted"
+	    ;;
     esac
 done
 
