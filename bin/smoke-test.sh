@@ -35,6 +35,7 @@ SKIPPED=0
 
 fullRun=0
 extended=0
+workarounds=""
 
 fail() {
     if [ -z "$lastTestFailed" -o "$lastTestFailed" == "0" ]; then
@@ -418,10 +419,16 @@ runCopy() {
         if [ "${lastLine#success}" != "${lastLine}" ]; then
             success
         elif [ "${lastLine#Success}" != "${lastLine}" ]; then # for DPM compatibility
+	    if [[ $workarounds != *S* ]]; then
+		workarounds="${workarounds}S"
+	    fi
             success
         elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
             fail "${lastLine#failure:}"
         else
+	    if [[ $workarounds != *F* ]]; then
+		workarounds="${workarounds}F"
+	    fi
             fail "for an unknown reason"
         fi
     fi
@@ -482,6 +489,7 @@ while getopts "h?fxlL" opt; do
             ;;
 	L)
 	    CURL_RDR_TRUST="--location-trusted"
+	    workarounds="${workarounds}L"
 	    ;;
     esac
 done
@@ -876,6 +884,13 @@ if [ $fullRun -eq 1 ]; then
             fi
             echo -n ")"
         fi
+    fi
+
+    echo -n " Work-arounds: "
+    if [ "$workarounds" != "" ]; then
+	echo -n "$workarounds"
+    else
+	echo -n "(none)"
     fi
 fi
 
