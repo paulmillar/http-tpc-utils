@@ -80,12 +80,6 @@ runTests() {
             options="-f"
         fi
 
-	if [ "$workarounds" == "-" ]; then
-	    unset hasWorkaround
-	else
-	    hasWorkaround="[*]"
-	fi
-
 	if [[ "$workarounds" == *L* ]]; then
 	    options="$options -L"
 	fi
@@ -106,7 +100,7 @@ runTests() {
         testCount=$(sed -n 's/^Of \([0-9]*\) tests.*/\1/p' $SMOKE_OUTPUT)
         testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
         testNonSuccessful=$(( $testCount - $testSuccess ))
-        echo -e "$testNonSuccessful\t$name\t$type$hasWorkaround\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
+        echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
     done
     echo -n -e "${CLEAR_LINE}"
 }
@@ -120,9 +114,10 @@ buildReport() {
         echo
         grep "$SOUND_ENDPOINT_RE" $RESULTS \
             | cut -f2- \
-            | sed 's/ *Of [0-9]* tests:.*\(\[in .*\]\)/\t\1/' \
+            | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/\t[\1]/' \
+	    | sed 's/\[(none)\]//' \
             > $SMOKE_OUTPUT
-        column -t $SMOKE_OUTPUT -s $'\t'
+        column -n -t $SMOKE_OUTPUT -s $'\t'
     fi
 
     if grep -v -q "$SOUND_ENDPOINT_RE" $RESULTS; then
@@ -134,11 +129,6 @@ buildReport() {
             | cut -f2- \
             > $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
-    fi
-
-    if grep -q "\[\*\]" $RESULTS; then
-        echo
-        echo "  [*]  Indicates one or more work-arounds were deployed."
     fi
 } > $REPORT
 
