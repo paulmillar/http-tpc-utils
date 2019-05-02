@@ -568,6 +568,24 @@ if [ $IP_ADDRESS_COUNT -eq 0 ]; then
    echo "WARNING: Failed to resolve any IP addresses for $HOST"
 fi
 
+# Explicit IP addres selection was added to curl in 7.49
+CURL_VERSION=$(curl --version | head -n1 | awk '{print $2}')
+CURL_MAJOR_VERSION=$(echo "$CURL_VERSION" | tr '.' ' ' | awk '{print $1;}')
+CURL_MINOR_VERSION=$(echo "$CURL_VERSION" | tr '.' ' ' |awk '{print $2;}')
+if [ "$CURL_MAJOR_VERSION" -gt 7 ]; then
+  CURL_HAS_CONNECT_TO=1
+elif [ "$CURL_MINOR_VERSION" -gt 49 ]; then
+  CURL_HAS_CONNECT_TO=1
+else
+  CURL_HAS_CONNECT_TO=0
+fi
+
+if [ $CURL_HAS_CONNECT_TO -eq 0 ]; then
+    echo "WARNING: curl does not support --connect-to; not specifying an IP address"
+    IP_ADDRESS_COUNT=1
+    ALL_IP_ADDRESSES=$(echo "$ALL_IP_ADDRESSES" | awk '{print $1;}')
+fi
+
 macaroonFailed=1
 IP_ADDRESS_COUNTER=1
 for IP_ADDRESS in $ALL_IP_ADDRESSES; do
