@@ -23,6 +23,10 @@ MACAROON_TIMEOUT=30 # value in seconds
 ##
 TPC_TIMEOUT=600     # value in seconds
 
+## Total time allowed for a digest request to complete.
+##
+DIGEST_TIMEOUT=180  # value in seconds
+
 RESET="\e[0m"
 DIM="\e[2m"
 GREEN="\e[32m"
@@ -541,6 +545,7 @@ CURL_X509="$CURL_X509 -H 'Credential: none'"     # Tell dCache not to request Gr
 
 MUST_MAKE_PROGRESS="--speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT"
 ENFORCE_TPC_TIMEOUT="-m $TPC_TIMEOUT"
+ENFORCE_DIGEST_TIMEOUT="-m $DIGEST_TIMEOUT"
 
 FILE_URL=$URL/smoke-test-$(uname -n)-$$
 
@@ -595,7 +600,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        doCurl $CURL_X509 -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     else
         skipped "upload failed"
@@ -606,7 +611,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            doCurl $CURL_X509 -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
 
@@ -614,7 +619,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            doCurl $CURL_X509 -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+            doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
         fi
 
@@ -622,7 +627,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         if [ $uploadFailed -ne 0 ]; then
             skipped "upload failed"
         else
-            doCurl $CURL_X509 -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
+            doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
             checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
         fi
     fi
@@ -672,7 +677,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        doCurl $CURL_MACAROON -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_MACAROON $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     fi
 
