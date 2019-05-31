@@ -30,3 +30,4 @@ UKI-QMUL       StoRM         -  https://se03.esc.qmul.ac.uk:8443/dteam
 UKI-RAL        DynaFed/ECHO  -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
 TRIUMF-DYNAFED DynaFed       -  https://atlas-fed-fe1.triumf.ca/dynafed/doma/
 TRIUMF-PPS     dCache        -  https://ppshead.lcg.triumf.ca:2880/dteam
+KIT            dCache        -  https://pps-single-webdav-kit.gridka.de:2880/pnfs/gridka.de/tpc/dteam
