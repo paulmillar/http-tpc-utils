@@ -39,6 +39,7 @@ SKIPPED=0
 
 fullRun=0
 extended=0
+scitokensRun=0
 workarounds=""
 
 fail() {
@@ -469,17 +470,56 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable 
     eval $3="$macaroon"
 }
 
+requestSciToken() { # $1 Scopes, $2 Issuer URL, $3 variable for token, $4 variable for result
+    local target_scitoken=$(mktemp)
+    local scitoken_json=$(mktemp)
+
+    lastTestFailed=0
+
+    # Note: This is what the current dteam issuer utilizes; there are several fallback mechanisms though.
+    echo -n "Querying SciToken issuer for token endpoint: "
+    doCurl $CURL_ISSUER_BASE -m$MACAROON_TIMEOUT -o$scitoken_json $2/.well-known/openid-configuration 2>$VERBOSE
+    checkFailure "SciToken discovery failed"
+    if [ $lastTestFailed -eq 0 ]; then
+        jq -r .token_endpoint $scitoken_json >$target_scitoken
+        checkFailure "Badly formatted JSON" $4
+    fi
+    if [ $lastTestFailed -eq 0 ]; then
+        token_endpoint="$(cat $target_scitoken)"
+        [ "$token_endpoint" != "null" ]
+        checkResult "Missing 'token_endpoint' element" $4
+    fi
+
+    echo "Resulting token endpoint: $token_endpoint"
+
+    echo -n "Requesting a new SciToken: "
+    doCurl $CURL_X509 "-m$MACAROON_TIMEOUT -o$scitoken_json -H 'Accept: application/json' -H 'Content-Type: application/x-www-form-urlencoded' -d 'grant_type=client_credentials' -X POST '$token_endpoint'" 2>$VERBOSE
+    checkFailure "SciToken token request failed"
+    if [ $lastTestFailed -eq 0 ]; then
+        jq -r .access_token $scitoken_json >$target_scitoken
+        checkFailure "Badly formatted JSON" $4
+    fi
+    if [ $lastTestFailed -eq 0 ]; then
+        token="$(cat $target_scitoken)"
+        [ "$token" != "null" ]
+        checkResult "Missing 'access_token' element" $4
+    fi
+
+    eval $3="$token"
+}
+
 for dependency in curl jq awk voms-proxy-info dig; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-while getopts "h?fxlL" opt; do
+while getopts "h?sfxlL" opt; do
     case "$opt" in
         h|\?)
             echo "$0 [-f] [-x] URL"
             echo
             echo "  -f  Do not stop on first error"
             echo "  -x  Run additional tests"
+            echo "  -s  Use SciTokens for authorization"
             exit 0
             ;;
         f)
@@ -494,6 +534,9 @@ while getopts "h?fxlL" opt; do
 	L)
 	    CURL_RDR_TRUST="--location-trusted"
 	    workarounds="${workarounds}L"
+	    ;;
+        s)
+            scitokensRun=1
 	    ;;
     esac
 done
@@ -542,6 +585,7 @@ CURL_BASE="$CURL_BASE -H 'X-No-Delegate: true'"  # Tell DPM not to request GridS
 CURL_BASE="$CURL_BASE $CURL_RDR_TRUST"        # SLAC xrootd redirects, expecting re-authentication.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
 CURL_X509="$CURL_X509 -H 'Credential: none'"     # Tell dCache not to request GridSite delegation.
+CURL_ISSUER_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L \$CURL_ADDRESS_SELECTION $CURL_EXTRA_OPTIONS"
 
 MUST_MAKE_PROGRESS="--speed-time $SPEED_TIME --speed-limit $SPEED_LIMIT"
 ENFORCE_TPC_TIMEOUT="-m $TPC_TIMEOUT"
@@ -566,6 +610,16 @@ IP_ADDRESS_COUNT=$(echo "$ALL_IP_ADDRESSES" | wc -w)
 
 if [ $IP_ADDRESS_COUNT -eq 0 ]; then
    echo "WARNING: Failed to resolve any IP addresses for $HOST"
+fi
+
+scitokenFailed=1
+if [ $scitokensRun -eq 1 ]; then
+    requestSciToken "" https://scitokens.org/dteam SCITOKEN_CONTENTS scitokenFailed
+    if [ $scitokenFailed -eq 0 ]; then
+        echo "Acquired a SciToken for transfer."
+    else
+        echo "Failed to get a SciToken for transfer."
+    fi
 fi
 
 macaroonFailed=1
@@ -640,19 +694,27 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         skipped "upload failed"
     fi
 
-    activityList="DOWNLOAD,UPLOAD,DELETE"
-    activityList="$activityList,LIST"   # DPM requires LIST for an RFC-3230 HEAD requests
-    echo -n "Request $activityList macaroon from target: "
-    requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
-
-    if [ $thisAddrMacaroonFailed -eq 0 ]; then
+    token_type=macaroon
+    if [ $scitokenFailed -eq 0 ]; then
+        echo "Will use SciToken for this test."
+        TARGET_MACAROON="$SCITOKEN_CONTENTS"
+        token_type=scitoken
         macaroonFailed=0
-        TARGET_MACAROON="$THIS_ADDR_TARGET_MACAROON"
+    else
+        activityList="DOWNLOAD,UPLOAD,DELETE"
+        activityList="$activityList,LIST"   # DPM requires LIST for an RFC-3230 HEAD requests
+        echo -n "Request $activityList macaroon from target: "
+        requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
+
+        if [ $thisAddrMacaroonFailed -eq 0 ]; then
+            macaroonFailed=0
+            TARGET_MACAROON="$THIS_ADDR_TARGET_MACAROON"
+        fi
     fi
 
     CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
 
-    echo -n "Uploading to target with macaroon authz: "
+    echo -n "Uploading to target with $token_type authz: "
     if [ $macaroonFailed -eq 0 ]; then
         doCurl $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Upload failed" uploadFailed
@@ -661,7 +723,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         skipped "no macaroon"
     fi
 
-    echo -n "Downloading from target with macaroon authz: "
+    echo -n "Downloading from target with $token_type authz: "
     if [ $macaroonFailed -ne 0 ]; then
         skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
@@ -671,7 +733,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         checkResult "Download failed"
     fi
 
-    echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
+    echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with $token_type authz: "
     if [ $macaroonFailed -ne 0 ]; then
         skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
@@ -681,7 +743,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     fi
 
-    echo -n "Deleting target with macaroon authz: "
+    echo -n "Deleting target with $token_type authz: "
     if [ $macaroonFailed -ne 0 ]; then
         skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
@@ -709,7 +771,7 @@ else
     doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
 fi
 
-echo -n "Initiating an unauthenticated HTTP PULL, authz with macaroon to target"
+echo -n "Initiating an unauthenticated HTTP PULL, authz with $token_type to target"
 if [ $macaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
@@ -717,7 +779,7 @@ else
     runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
 fi
 
-echo -n "Deleting target with macaroon: "
+echo -n "Deleting target with $token_type: "
 if [ $macaroonFailed -ne 0 ]; then
     skipped "no macaroon"
 elif [ $lastTestFailed -ne 0 ]; then
@@ -747,10 +809,10 @@ else
     checkResult
 fi
 
-echo -n "Initiating a macaroon authz HTTP PULL, authz with macaroon to target"
+echo -n "Initiating a macaroon authz HTTP PULL, authz with $token_type to target"
 if [ $macaroonFailed -ne 0 ]; then
     echo -n ": "
-    skipped "no macaroon"
+    skipped "no $token_type"
 elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no TPC macaroon"
@@ -758,9 +820,9 @@ else
     runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
 fi
 
-echo -n "Deleting target with macaroon: "
+echo -n "Deleting target with $token_type: "
 if [ $macaroonFailed -ne 0 ]; then
-    skipped "no macaroon"
+    skipped "no $token_type"
 elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     skipped "no TPC macaroon"
 elif [ $lastTestFailed -ne 0 ]; then
@@ -814,10 +876,10 @@ else
     checkResult "delete failed"
 fi
 
-echo -n "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target"
+echo -n "Initiating a macaroon authz HTTP PUSH, authz with $token_type to target"
 if [ $macaroonFailed -ne 0 ]; then
     echo -n ": "
-    skipped "no macaroon"
+    skipped "no $token_type"
 elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no third-party macaroon"
@@ -830,7 +892,7 @@ fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
 if [ $macaroonFailed -ne 0 ]; then
-    skipped "no macaroon"
+    skipped "no $token_type"
 elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
     skipped "no TPC macaroon"
 elif [ $sourceUploadFailed -ne 0 ]; then
