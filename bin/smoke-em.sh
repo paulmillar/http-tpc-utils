@@ -115,9 +115,9 @@ buildReport() {
         grep "$SOUND_ENDPOINT_RE" $RESULTS \
             | cut -f2- \
             | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/\t[\1]/' \
-	    | sed 's/\[(none)\]//' \
+	    | sed 's/\[(none)\]/ /' \
             > $SMOKE_OUTPUT
-        column -n -t $SMOKE_OUTPUT -s $'\t'
+        column -t $SMOKE_OUTPUT -s $'\t'
     fi
 
     if grep -v -q "$SOUND_ENDPOINT_RE" $RESULTS; then
