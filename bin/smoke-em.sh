@@ -21,14 +21,15 @@ CLEAR_LINE="\e[2K"
 SOUND_ENDPOINT_RE="successful (100%)"
 
 OUTPUT_DESCRIPTION="stdout"
-while getopts "h?s:m:x" opt; do
+while getopts "h?s:m:xp:" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 -x [-s <addr> [-m <mailer>]]"
+            echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>]"
             echo
-            echo "    -s  send report as an email to <addr>"
-            echo "    -m  use <mailer> to send email: 'mail' and 'thunderbird'"
-            echo "    -x  use extended tests, if supported"
+            echo "    -s  <addr>   send report as an email"
+            echo "    -m  <mailer> use 'mail' or 'thunderbird' to send email"
+            echo "    -x           use extended tests, if supported"
+            echo "    -p <file>    use <file> for persistent state"
             exit 0
             ;;
         s)
@@ -40,6 +41,9 @@ while getopts "h?s:m:x" opt; do
             ;;
         x)
             EXTENDED_TESTS=1
+            ;;
+        p)
+            persistentState="$OPTARG"
             ;;
     esac
 done
@@ -61,6 +65,24 @@ case $MAILER in
         ;;
 esac
 
+declare -A ENDPOINT_SCORE
+
+readPersistentState() {
+    local OLD_IFS
+    OLD_IFS="$IFS"
+    IFS=": "
+    while read endpoint score; do
+        ENDPOINT_SCORE[$endpoint]=$score
+    done
+    IFS="$OLD_IFS"
+} < $persistentState
+
+writePersistentState() {
+    for endpoint in "${!ENDPOINT_SCORE[@]}"; do
+        echo ${endpoint}:${ENDPOINT_SCORE[$endpoint]}
+    done
+} > $persistentState
+
 runTests() {
     local options
 
@@ -80,9 +102,9 @@ runTests() {
             options="-f"
         fi
 
-	if [[ "$workarounds" == *L* ]]; then
-	    options="$options -L"
-	fi
+        if [[ "$workarounds" == *L* ]]; then
+            options="$options -L"
+        fi
 
         echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
         COUNT=$(( $COUNT + 1 ))
@@ -105,6 +127,25 @@ runTests() {
     echo -n -e "${CLEAR_LINE}"
 }
 
+updateScores() {
+    while read ignore endpoint rest; do
+        case $rest in
+            *${SOUND_ENDPOINT_RE}*)
+                ENDPOINT_SCORE[$endpoint]=$(( ${ENDPOINT_SCORE[$endpoint]} + 1 ))
+                if [ ${ENDPOINT_SCORE[$endpoint]} -gt 20 ]; then
+                    ENDPOINT_SCORE[$endpoint]=20
+                fi
+                ;;
+            *)
+                ENDPOINT_SCORE[$endpoint]=$(( ${ENDPOINT_SCORE[$endpoint]} - 1 ))
+                if [ ${ENDPOINT_SCORE[$endpoint]} -lt 0 ]; then
+                    ENDPOINT_SCORE[$endpoint]=0
+                fi
+                ;;
+        esac
+    done < $RESULTS
+}
+
 buildReport() {
     echo "DOMA-TPC smoke test $(date --iso-8601=m)"
 
@@ -115,7 +156,7 @@ buildReport() {
         grep "$SOUND_ENDPOINT_RE" $RESULTS \
             | cut -f2- \
             | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/\t[\1]/' \
-	    | sed 's/\[(none)\]/ /' \
+            | sed 's/\[(none)\]/ /' \
             > $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
@@ -181,8 +222,13 @@ voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info -e -hours 1 >/dev/null 2>&1 || fatal "X.509 proxy expires too soon"
 voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
 
+[ -f "$persistentState" ] && readPersistentState
+
 echo "Building report for ${OUTPUT_DESCRIPTION}..."
 runTests
+
+[ -n "$$persistentState" ] && updateScores
+
 buildReport
 
 if [ -n "$sendEmail" ]; then
@@ -194,3 +240,6 @@ else
     echo
     cat $FAILURES
 fi
+
+
+[ -n "$$persistentState" ] && writePersistentState
