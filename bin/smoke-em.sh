@@ -134,6 +134,8 @@ buildReport() {
 
 
 sendEmail() { # $1 - email address, $2 - subject
+    local mailer
+
     ## Rename the file because the filename is used as the attachment's name
     FAILURES2=/tmp/smoke-test-details-$date.txt
     cp $FAILURES $FAILURES2
@@ -141,7 +143,19 @@ sendEmail() { # $1 - email address, $2 - subject
 
     case $MAILER in
         mail)
-            mail -s "$2" "$1" -A $FAILURES2 < $REPORT
+            mailer=mailx
+            mail -V |grep -i mailutils >/dev/null 2>&1 && mailer=mailutils
+            case $mailer in
+                mailx)
+                    mail -s "$2" -a $FAILURES2 "$1" < $REPORT
+                    ;;
+                mailutils)
+                    mail -s "$2" "$1" -A $FAILURES2 < $REPORT
+                    ;;
+                *)
+                    echo "Unknown mailer $mailer"
+                    ;;
+            esac
             ;;
 
         thunderbird)
