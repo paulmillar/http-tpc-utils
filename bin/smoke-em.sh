@@ -260,7 +260,7 @@ runTests
 buildReport
 
 if [ -n "$sendEmail" ]; then
-    echo "Sending email to $sendEmail"
+    [ $QUIET -eq 0 ] && echo "Sending email to $sendEmail"
     date=$(date --iso-8601=m)
     sendEmail "$sendEmail" "Smoke test report $date"
 else
