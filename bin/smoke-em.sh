@@ -153,11 +153,9 @@ updateScores() {
 
 buildReport() {
     UPDATED_RESULTS=$(mktemp)
-    FILES_TO_DELETE="$FILES_TO_DELETE $UPDATED_RESULTS"
-
     HEADER_SOUND=$(mktemp)
     HEADER_PROBLEMATIC=$(mktemp)
-    FILES_TO_DELETE="$FILES_TO_DELETE $HEADER_SOUND $HEADER_PROBLEMATIC"
+    FILES_TO_DELETE="$FILES_TO_DELETE $UPDATED_RESULTS $HEADER_SOUND $HEADER_PROBLEMATIC"
 
     if [ -n "$persistentState" ]; then
         while read failures endpoint rest; do
