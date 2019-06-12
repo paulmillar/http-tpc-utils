@@ -150,36 +150,50 @@ buildReport() {
     UPDATED_RESULTS=$(mktemp)
     FILES_TO_DELETE="$FILES_TO_DELETE $UPDATED_RESULTS"
 
+    HEADER_SOUND=$(mktemp)
+    HEADER_PROBLEMATIC=$(mktemp)
+    FILES_TO_DELETE="$FILES_TO_DELETE $HEADER_SOUND $HEADER_PROBLEMATIC"
+
     if [ -n "$persistentState" ]; then
         while read failures endpoint rest; do
             echo -e "${ENDPOINT_SCORE[$endpoint]}\t$endpoint\t$rest"
         done < $RESULTS > $UPDATED_RESULTS
         sort -k1n $UPDATED_RESULTS > $RESULTS
+        echo -e "SCORE\tENDPOINT\tTYPE" > $HEADER_SOUND
+        echo -e "SCORE\tENDPOINT\tTYPE\tSUMMARY" > $HEADER_PROBLEMATIC
     else
         sort -k1n $RESULTS | cut -f2- > $UPDATED_RESULTS
         mv $UPDATED_RESULTS $RESULTS
+        echo -e "ENDPOINT\tTYPE" > $HEADER_SOUND
+        echo -e "ENDPOINT\tTYPE\tSUMMARY" > $HEADER_PROBLEMATIC
     fi
 
 
     echo "DOMA-TPC smoke test $(date --iso-8601=m)"
 
     if grep -q "$SOUND_ENDPOINT_RE" $RESULTS; then
+        haveSoundEndpoints=1
         echo
         echo "SOUND ENDPOINTS"
         echo
+        cp $HEADER_SOUND $SMOKE_OUTPUT
         grep "$SOUND_ENDPOINT_RE" $RESULTS \
             | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/\t[\1]/' \
             | sed 's/\[(none)\]/ /' \
-            > $SMOKE_OUTPUT
+            >> $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
 
     if grep -v -q "$SOUND_ENDPOINT_RE" $RESULTS; then
+        if [ "$haveSoundEndpoints" = 1 ]; then
+            echo
+        fi
         echo
         echo "PROBLEMATIC ENDPOINTS"
         echo
+        cp $HEADER_PROBLEMATIC $SMOKE_OUTPUT
         grep -v "$SOUND_ENDPOINT_RE" $RESULTS \
-            > $SMOKE_OUTPUT
+            >> $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
 } > $REPORT
