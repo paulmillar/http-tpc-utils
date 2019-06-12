@@ -163,13 +163,13 @@ buildReport() {
         while read failures endpoint rest; do
             echo -e "${ENDPOINT_SCORE[$endpoint]}\t$endpoint\t$rest"
         done < $RESULTS > $UPDATED_RESULTS
-        sort -k1n $UPDATED_RESULTS > $RESULTS
-        echo -e "SCORE\tENDPOINT\tTYPE" > $HEADER_SOUND
+        sort -k1rn $UPDATED_RESULTS > $RESULTS
+        echo -e "SCORE\tENDPOINT\tTYPE\tWORK-AROUNDS" > $HEADER_SOUND
         echo -e "SCORE\tENDPOINT\tTYPE\tSUMMARY" > $HEADER_PROBLEMATIC
     else
         sort -k1n $RESULTS | cut -f2- > $UPDATED_RESULTS
         mv $UPDATED_RESULTS $RESULTS
-        echo -e "ENDPOINT\tTYPE" > $HEADER_SOUND
+        echo -e "ENDPOINT\tTYPE\tWORK-AROUNDS" > $HEADER_SOUND
         echo -e "ENDPOINT\tTYPE\tSUMMARY" > $HEADER_PROBLEMATIC
     fi
 
