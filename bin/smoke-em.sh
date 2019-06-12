@@ -147,6 +147,20 @@ updateScores() {
 }
 
 buildReport() {
+    UPDATED_RESULTS=$(mktemp)
+    FILES_TO_DELETE="$FILES_TO_DELETE $UPDATED_RESULTS"
+
+    if [ -n "$persistentState" ]; then
+        while read failures endpoint rest; do
+            echo -e "${ENDPOINT_SCORE[$endpoint]}\t$endpoint\t$rest"
+        done < $RESULTS > $UPDATED_RESULTS
+        sort -k1n $UPDATED_RESULTS > $RESULTS
+    else
+        sort -k1n $RESULTS | cut -f2- > $UPDATED_RESULTS
+        mv $UPDATED_RESULTS $RESULTS
+    fi
+
+
     echo "DOMA-TPC smoke test $(date --iso-8601=m)"
 
     if grep -q "$SOUND_ENDPOINT_RE" $RESULTS; then
@@ -154,7 +168,6 @@ buildReport() {
         echo "SOUND ENDPOINTS"
         echo
         grep "$SOUND_ENDPOINT_RE" $RESULTS \
-            | cut -f2- \
             | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/\t[\1]/' \
             | sed 's/\[(none)\]/ /' \
             > $SMOKE_OUTPUT
@@ -166,8 +179,6 @@ buildReport() {
         echo "PROBLEMATIC ENDPOINTS"
         echo
         grep -v "$SOUND_ENDPOINT_RE" $RESULTS \
-            | sort -k1n \
-            | cut -f2- \
             > $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
@@ -227,7 +238,7 @@ voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not asse
 echo "Building report for ${OUTPUT_DESCRIPTION}..."
 runTests
 
-[ -n "$$persistentState" ] && updateScores
+[ -n "$persistentState" ] && updateScores
 
 buildReport
 
@@ -242,4 +253,4 @@ else
 fi
 
 
-[ -n "$$persistentState" ] && writePersistentState
+[ -n "$persistentState" ] && writePersistentState
