@@ -21,7 +21,8 @@ CLEAR_LINE="\e[2K"
 SOUND_ENDPOINT_RE="successful (100%)"
 
 OUTPUT_DESCRIPTION="stdout"
-while getopts "h?s:m:xp:" opt; do
+QUIET=0
+while getopts "h?s:m:xp:q" opt; do
     case "$opt" in
         h|\?)
             echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>]"
@@ -30,6 +31,7 @@ while getopts "h?s:m:xp:" opt; do
             echo "    -m  <mailer> use 'mail' or 'thunderbird' to send email"
             echo "    -x           use extended tests, if supported"
             echo "    -p <file>    use <file> for persistent state"
+            echo "    -q           limit output to errors and prompts"
             exit 0
             ;;
         s)
@@ -45,6 +47,9 @@ while getopts "h?s:m:xp:" opt; do
         p)
             persistentState="$OPTARG"
             ;;
+	q)
+	    QUIET=1
+	    ;;
     esac
 done
 
@@ -106,7 +111,7 @@ runTests() {
             options="$options -L"
         fi
 
-        echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
+	[ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
         COUNT=$(( $COUNT + 1 ))
 
         startTime=$(date +%s)
@@ -249,7 +254,7 @@ voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not asse
 
 [ -f "$persistentState" ] && readPersistentState
 
-echo "Building report for ${OUTPUT_DESCRIPTION}..."
+[ $QUIET -eq 0 ] && echo "Building report for ${OUTPUT_DESCRIPTION}..."
 runTests
 
 [ -n "$persistentState" ] && updateScores
