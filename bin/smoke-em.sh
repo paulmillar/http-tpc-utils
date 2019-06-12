@@ -129,7 +129,7 @@ runTests() {
         testNonSuccessful=$(( $testCount - $testSuccess ))
         echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
     done
-    echo -n -e "${CLEAR_LINE}"
+    [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}"
 }
 
 updateScores() {
