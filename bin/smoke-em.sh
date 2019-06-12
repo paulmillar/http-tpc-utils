@@ -162,13 +162,13 @@ buildReport() {
             echo -e "${ENDPOINT_SCORE[$endpoint]}\t$endpoint\t$rest"
         done < $RESULTS > $UPDATED_RESULTS
         sort -k1rn $UPDATED_RESULTS > $RESULTS
-        echo -e "SCORE\tENDPOINT\tTYPE\t \tWORK-AROUNDS" > $HEADER_SOUND
-        echo -e "SCORE\tENDPOINT\tTYPE\tSUMMARY" > $HEADER_PROBLEMATIC
+        echo -e "SCORE\tENDPOINT\tSOFTWARE\t \tWORK-AROUNDS" > $HEADER_SOUND
+        echo -e "SCORE\tENDPOINT\tSOFTWARE\tSUMMARY" > $HEADER_PROBLEMATIC
     else
         sort -k1n $RESULTS | cut -f2- > $UPDATED_RESULTS
         mv $UPDATED_RESULTS $RESULTS
-        echo -e "ENDPOINT\tTYPE\t \tWORK-AROUNDS" > $HEADER_SOUND
-        echo -e "ENDPOINT\tTYPE\tSUMMARY" > $HEADER_PROBLEMATIC
+        echo -e "ENDPOINT\tSOFTWARE\t \tWORK-AROUNDS" > $HEADER_SOUND
+        echo -e "ENDPOINT\tSOFTWARE\tSUMMARY" > $HEADER_PROBLEMATIC
     fi
 
 
