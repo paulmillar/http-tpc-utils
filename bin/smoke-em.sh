@@ -213,7 +213,7 @@ buildReport() {
         echo
         cp $HEADER_SOUND $SMOKE_OUTPUT
         grep "$SOUND_ENDPOINT_RE" $RESULTS \
-            | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/\t[\1]/' \
+            | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/[\1]/' \
             | sed 's/\[(none)\]/ /' \
             >> $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
