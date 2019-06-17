@@ -233,7 +233,7 @@ buildReport() {
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
 
-    if [ -f "$SKIPPED" ]; then
+    if [ -s "$SKIPPED" ]; then
         if [ "$haveSoundEndpoints$haveProblematicEndpoints" != "" ]; then
             echo
         fi
