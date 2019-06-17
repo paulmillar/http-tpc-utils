@@ -13,7 +13,8 @@ SMOKE_OUTPUT=$(mktemp)
 RESULTS=$(mktemp)
 FAILURES=$(mktemp)
 REPORT=$(mktemp)
-FILES_TO_DELETE="$SMOKE_OUTPUT $RESULTS $FAILURES $REPORT"
+SKIPPED=$(mktemp)
+FILES_TO_DELETE="$SMOKE_OUTPUT $RESULTS $FAILURES $REPORT $SKIPPED"
 MAILER=mail
 EXTENDED_TESTS=0
 CLEAR_LINE="\e[2K"
@@ -72,6 +73,12 @@ esac
 
 declare -A ENDPOINT_SCORE
 
+downloadGocDbDowntimeInfo() {
+    DOWNTIME_XML=$(mktemp)
+    FILES_TO_DELETE="$FILES_TO_DELETE $DOWNTIME_XML"
+    curl -s -k 'https://goc.egi.eu/gocdbpi/public/?method=get_downtime&ongoing_only=yes' > $DOWNTIME_XML
+}
+
 readPersistentState() {
     local OLD_IFS
     OLD_IFS="$IFS"
@@ -88,11 +95,28 @@ writePersistentState() {
     done
 } > $persistentState
 
+
+isEndpointInDowntime() { # $1 - endpoint
+    local without_scheme=${1#https://}
+    local host_port=$(echo $without_scheme | cut -d '/' -f1)
+    local fqdn=$(echo $host_port | cut -d ':' -f1)
+
+    xmllint --xpath "/results/DOWNTIME[HOSTNAME='$fqdn' and SEVERITY='OUTAGE']" $DOWNTIME_XML >/dev/null 2>&1
+    rc=$?
+
+    if [ $rc -eq 0 ]; then
+	DOWNTIME_DESCRIPTION=$(xsltproc --stringparam fqdn $fqdn share/downtime-description.xsl $DOWNTIME_XML)
+    fi
+
+    return $rc
+}
+
+
 runTests() {
     local options
 
     TOTAL=$(wc -l $BASE/etc/endpoints|awk '{print $1}')
-    COUNT=1
+    COUNT=0
     cat $BASE/etc/endpoints | while read name type workarounds url; do
         if [ $EXTENDED_TESTS -eq 1 ]; then
             case $type in
@@ -111,23 +135,31 @@ runTests() {
             options="$options -L"
         fi
 
-	[ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
         COUNT=$(( $COUNT + 1 ))
 
-        startTime=$(date +%s)
-        bin/smoke-test.sh $options $url > $SMOKE_OUTPUT
-        result=$?
-        elapsedTime=$(( $(date +%s) - $startTime ))
-        duration=$(printf "%02d:%02d" $(($elapsedTime/60)) $(($elapsedTime%60)))
-        if [ $result -ne 0 ]; then
-            [ -s $FAILURES ] && echo -e "\n" >> $FAILURES
-            echo $name >> $FAILURES
-            head -n-2 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g' | awk '{print "    "$0}' >> $FAILURES
-        fi
-        testCount=$(sed -n 's/^Of \([0-9]*\) tests.*/\1/p' $SMOKE_OUTPUT)
-        testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
-        testNonSuccessful=$(( $testCount - $testSuccess ))
-        echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
+        if isEndpointInDowntime $url; then
+            [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Skipping: $name [$COUNT/$TOTAL] $options $url\r"
+            echo -e "$name\t$type\tGOCDB Downtime: $DOWNTIME_DESCRIPTION" >> $SKIPPED
+
+	else
+
+            [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
+
+            startTime=$(date +%s)
+            bin/smoke-test.sh $options $url > $SMOKE_OUTPUT
+            result=$?
+            elapsedTime=$(( $(date +%s) - $startTime ))
+            duration=$(printf "%02d:%02d" $(($elapsedTime/60)) $(($elapsedTime%60)))
+            if [ $result -ne 0 ]; then
+                [ -s $FAILURES ] && echo -e "\n" >> $FAILURES
+                echo $name >> $FAILURES
+                head -n-2 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g' | awk '{print "    "$0}' >> $FAILURES
+            fi
+            testCount=$(sed -n 's/^Of \([0-9]*\) tests.*/\1/p' $SMOKE_OUTPUT)
+            testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
+            testNonSuccessful=$(( $testCount - $testSuccess ))
+            echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
+	fi
     done
     [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}"
 }
@@ -162,12 +194,12 @@ buildReport() {
             echo -e "${ENDPOINT_SCORE[$endpoint]}\t$endpoint\t$rest"
         done < $RESULTS > $UPDATED_RESULTS
         sort -k1rn $UPDATED_RESULTS > $RESULTS
-        echo -e "SCORE\tENDPOINT\tSOFTWARE\t \tWORK-AROUNDS" > $HEADER_SOUND
+        echo -e "SCORE\tENDPOINT\tSOFTWARE\tWORK-AROUNDS" > $HEADER_SOUND
         echo -e "SCORE\tENDPOINT\tSOFTWARE\tSUMMARY" > $HEADER_PROBLEMATIC
     else
         sort -k1n $RESULTS | cut -f2- > $UPDATED_RESULTS
         mv $UPDATED_RESULTS $RESULTS
-        echo -e "ENDPOINT\tSOFTWARE\t \tWORK-AROUNDS" > $HEADER_SOUND
+        echo -e "ENDPOINT\tSOFTWARE\tWORK-AROUNDS" > $HEADER_SOUND
         echo -e "ENDPOINT\tSOFTWARE\tSUMMARY" > $HEADER_PROBLEMATIC
     fi
 
@@ -191,12 +223,26 @@ buildReport() {
         if [ "$haveSoundEndpoints" = 1 ]; then
             echo
         fi
+        haveProblematicEndpoints=1
         echo
         echo "PROBLEMATIC ENDPOINTS"
         echo
         cp $HEADER_PROBLEMATIC $SMOKE_OUTPUT
         grep -v "$SOUND_ENDPOINT_RE" $RESULTS \
             >> $SMOKE_OUTPUT
+        column -t $SMOKE_OUTPUT -s $'\t'
+    fi
+
+    if [ -f "$SKIPPED" ]; then
+        if [ "$haveSoundEndpoints$haveProblematicEndpoints" != "" ]; then
+            echo
+        fi
+
+        echo
+        echo "SKIPPED ENDPOINTS"
+        echo
+        echo -e "ENDPOINT\tSOFTWARE\tWHY" > $SMOKE_OUTPUT
+        cat $SKIPPED >> $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
 } > $REPORT
@@ -249,6 +295,8 @@ sendEmail() { # $1 - email address, $2 - subject
 voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info -e -hours 1 >/dev/null 2>&1 || fatal "X.509 proxy expires too soon"
 voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
+
+downloadGocDbDowntimeInfo
 
 [ -f "$persistentState" ] && readPersistentState
 
