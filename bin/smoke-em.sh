@@ -21,14 +21,17 @@ CLEAR_LINE="\e[2K"
 SOUND_ENDPOINT_RE="successful (100%)"
 
 OUTPUT_DESCRIPTION="stdout"
-while getopts "h?s:m:x" opt; do
+QUIET=0
+while getopts "h?s:m:xp:q" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 -x [-s <addr> [-m <mailer>]]"
+            echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>]"
             echo
-            echo "    -s  send report as an email to <addr>"
-            echo "    -m  use <mailer> to send email: 'mail' and 'thunderbird'"
-            echo "    -x  use extended tests, if supported"
+            echo "    -s  <addr>   send report as an email"
+            echo "    -m  <mailer> use 'mail' or 'thunderbird' to send email"
+            echo "    -x           use extended tests, if supported"
+            echo "    -p <file>    use <file> for persistent state"
+            echo "    -q           limit output to errors and prompts"
             exit 0
             ;;
         s)
@@ -41,6 +44,12 @@ while getopts "h?s:m:x" opt; do
         x)
             EXTENDED_TESTS=1
             ;;
+        p)
+            persistentState="$OPTARG"
+            ;;
+	q)
+	    QUIET=1
+	    ;;
     esac
 done
 
@@ -61,6 +70,24 @@ case $MAILER in
         ;;
 esac
 
+declare -A ENDPOINT_SCORE
+
+readPersistentState() {
+    local OLD_IFS
+    OLD_IFS="$IFS"
+    IFS=": "
+    while read endpoint score; do
+        ENDPOINT_SCORE[$endpoint]=$score
+    done
+    IFS="$OLD_IFS"
+} < $persistentState
+
+writePersistentState() {
+    for endpoint in "${!ENDPOINT_SCORE[@]}"; do
+        echo ${endpoint}:${ENDPOINT_SCORE[$endpoint]}
+    done
+} > $persistentState
+
 runTests() {
     local options
 
@@ -80,11 +107,11 @@ runTests() {
             options="-f"
         fi
 
-	if [[ "$workarounds" == *L* ]]; then
-	    options="$options -L"
-	fi
+        if [[ "$workarounds" == *L* ]]; then
+            options="$options -L"
+        fi
 
-        echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
+	[ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
         COUNT=$(( $COUNT + 1 ))
 
         startTime=$(date +%s)
@@ -102,38 +129,82 @@ runTests() {
         testNonSuccessful=$(( $testCount - $testSuccess ))
         echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
     done
-    echo -n -e "${CLEAR_LINE}"
+    [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}"
+}
+
+updateScores() {
+    while read ignore endpoint rest; do
+        case $rest in
+            *${SOUND_ENDPOINT_RE}*)
+                ENDPOINT_SCORE[$endpoint]=$(( ${ENDPOINT_SCORE[$endpoint]} + 1 ))
+                if [ ${ENDPOINT_SCORE[$endpoint]} -gt 20 ]; then
+                    ENDPOINT_SCORE[$endpoint]=20
+                fi
+                ;;
+            *)
+                ENDPOINT_SCORE[$endpoint]=$(( ${ENDPOINT_SCORE[$endpoint]} - 1 ))
+                if [ ${ENDPOINT_SCORE[$endpoint]} -lt 0 ]; then
+                    ENDPOINT_SCORE[$endpoint]=0
+                fi
+                ;;
+        esac
+    done < $RESULTS
 }
 
 buildReport() {
+    UPDATED_RESULTS=$(mktemp)
+    HEADER_SOUND=$(mktemp)
+    HEADER_PROBLEMATIC=$(mktemp)
+    FILES_TO_DELETE="$FILES_TO_DELETE $UPDATED_RESULTS $HEADER_SOUND $HEADER_PROBLEMATIC"
+
+    if [ -n "$persistentState" ]; then
+        while read failures endpoint rest; do
+            echo -e "${ENDPOINT_SCORE[$endpoint]}\t$endpoint\t$rest"
+        done < $RESULTS > $UPDATED_RESULTS
+        sort -k1rn $UPDATED_RESULTS > $RESULTS
+        echo -e "SCORE\tENDPOINT\tSOFTWARE\t \tWORK-AROUNDS" > $HEADER_SOUND
+        echo -e "SCORE\tENDPOINT\tSOFTWARE\tSUMMARY" > $HEADER_PROBLEMATIC
+    else
+        sort -k1n $RESULTS | cut -f2- > $UPDATED_RESULTS
+        mv $UPDATED_RESULTS $RESULTS
+        echo -e "ENDPOINT\tSOFTWARE\t \tWORK-AROUNDS" > $HEADER_SOUND
+        echo -e "ENDPOINT\tSOFTWARE\tSUMMARY" > $HEADER_PROBLEMATIC
+    fi
+
+
     echo "DOMA-TPC smoke test $(date --iso-8601=m)"
 
     if grep -q "$SOUND_ENDPOINT_RE" $RESULTS; then
+        haveSoundEndpoints=1
         echo
         echo "SOUND ENDPOINTS"
         echo
+        cp $HEADER_SOUND $SMOKE_OUTPUT
         grep "$SOUND_ENDPOINT_RE" $RESULTS \
-            | cut -f2- \
             | sed 's/ *Of [0-9]* tests:.*Work-arounds: \([^ \t]*\)/\t[\1]/' \
-	    | sed 's/\[(none)\]//' \
-            > $SMOKE_OUTPUT
-        column -n -t $SMOKE_OUTPUT -s $'\t'
+            | sed 's/\[(none)\]/ /' \
+            >> $SMOKE_OUTPUT
+        column -t $SMOKE_OUTPUT -s $'\t'
     fi
 
     if grep -v -q "$SOUND_ENDPOINT_RE" $RESULTS; then
+        if [ "$haveSoundEndpoints" = 1 ]; then
+            echo
+        fi
         echo
         echo "PROBLEMATIC ENDPOINTS"
         echo
+        cp $HEADER_PROBLEMATIC $SMOKE_OUTPUT
         grep -v "$SOUND_ENDPOINT_RE" $RESULTS \
-            | sort -k1n \
-            | cut -f2- \
-            > $SMOKE_OUTPUT
+            >> $SMOKE_OUTPUT
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
 } > $REPORT
 
 
 sendEmail() { # $1 - email address, $2 - subject
+    local mailer
+
     ## Rename the file because the filename is used as the attachment's name
     FAILURES2=/tmp/smoke-test-details-$date.txt
     cp $FAILURES $FAILURES2
@@ -141,7 +212,19 @@ sendEmail() { # $1 - email address, $2 - subject
 
     case $MAILER in
         mail)
-            mail -s "$2" "$1" -A $FAILURES2 < $REPORT
+            mailer=mailx
+            mail -V |grep -i mailutils >/dev/null 2>&1 && mailer=mailutils
+            case $mailer in
+                mailx)
+                    mail -s "$2" -a $FAILURES2 "$1" < $REPORT
+                    ;;
+                mailutils)
+                    mail -s "$2" "$1" -A $FAILURES2 < $REPORT
+                    ;;
+                *)
+                    echo "Unknown mailer $mailer"
+                    ;;
+            esac
             ;;
 
         thunderbird)
@@ -167,12 +250,17 @@ voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info -e -hours 1 >/dev/null 2>&1 || fatal "X.509 proxy expires too soon"
 voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
 
-echo "Building report for ${OUTPUT_DESCRIPTION}..."
+[ -f "$persistentState" ] && readPersistentState
+
+[ $QUIET -eq 0 ] && echo "Building report for ${OUTPUT_DESCRIPTION}..."
 runTests
+
+[ -n "$persistentState" ] && updateScores
+
 buildReport
 
 if [ -n "$sendEmail" ]; then
-    echo "Sending email to $sendEmail"
+    [ $QUIET -eq 0 ] && echo "Sending email to $sendEmail"
     date=$(date --iso-8601=m)
     sendEmail "$sendEmail" "Smoke test report $date"
 else
@@ -180,3 +268,6 @@ else
     echo
     cat $FAILURES
 fi
+
+
+[ -n "$persistentState" ] && writePersistentState
