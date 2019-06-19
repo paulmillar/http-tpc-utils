@@ -7,6 +7,21 @@
 
   <xsl:output method="text"/>
 
+  <xsl:template match="/">
+    <xsl:variable name="description">
+      <xsl:apply-templates select="/results"/>
+    </xsl:variable>
+
+    <xsl:choose>
+      <xsl:when test="not($description = '')">
+	<xsl:value-of select="$description"/>
+      </xsl:when>
+      <xsl:otherwise>
+	<xsl:value-of select="'an unspecified reason'"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:template>
+
   <xsl:template match="/results/DOWNTIME[SERVICE_TYPE='webdav' and SEVERITY='OUTAGE']">
     <xsl:if test="HOSTNAME=$fqdn">
       <xsl:choose>
