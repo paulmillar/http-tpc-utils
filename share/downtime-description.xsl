@@ -7,7 +7,7 @@
 
   <xsl:output method="text"/>
 
-  <xsl:template match="/results/DOWNTIME[SEVERITY='OUTAGE']">
+  <xsl:template match="/results/DOWNTIME[SERVICE_TYPE='webdav' and SEVERITY='OUTAGE']">
     <xsl:if test="HOSTNAME=$fqdn">
       <xsl:choose>
 	<xsl:when test="string-length(DESCRIPTION) > 50">
