@@ -3,7 +3,7 @@ BEIJING-TEST   DPM           -  https://dpmtest.ihep.ac.cn/dpm/ihep.ac.cn/home/d
 BNL            dCache        -  https://dcdoor05.usatlas.bnl.gov:2881/pnfs/usatlas.bnl.gov/BNLT0D1/SAM/
 BRUSSELS       dCache        -  https://maite.iihe.ac.be:2880/pnfs/iihe/dteam
 CA-IAAS        DynaFed       -  https://dynafed02.heprc.uvic.ca:8443/tpc/
-CALTECH        xrootd        L  https://transfer-1.ultralight.org:1094/store/user/dteam
+CALTECH        xrootd/HDFS   L  https://transfer-1.ultralight.org:1094/store/user/dteam
 CERN           EOS           -  https://eosppshttp.cern.ch:443/eos/opstest
 CERN-RC        DPM           -  https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 CERN-TRUNK     DPM           -  https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
@@ -17,8 +17,8 @@ KIT            dCache        -  https://pps-single-webdav-kit.gridka.de:2880/pnf
 LRZ-LMU        dCache        -  https://lcg-lrz-http.grid.lrz.de/pnfs/lrz-muenchen.de/data/atlas/atlasdynafeddisk/tpc/domatest
 NDGF           dCache        -  https://dav.ndgf.org/dteam/tpc
 NDGF-PREPROD   dCache        -  https://preprod-srm.ndgf.org/dteam/tpc
-NEBRASKA2      xrootd        L  https://xrootd-local.unl.edu:1094/user/dteam
-NEBRASKA       xrootd        -  https://red-gridftp12.unl.edu:1094/user/dteam
+NEBRASKA2      xrootd/HDFS   L  https://xrootd-local.unl.edu:1094/user/dteam
+NEBRASKA       xrootd/HDFS   -  https://red-gridftp12.unl.edu:1094/user/dteam
 PIC-PPS        dCache        -  https://dccore01-pps.pic.es:8448/tpc-test/
 PRAGUELCG2     DPM           -  https://golias100.farm.particle.cz/dpm/farm.particle.cz/home/dteam/tpc-test
 SARA           dCache        -  https://webdav.grid.surfsara.nl:2882/pnfs/grid.sara.nl/data/dteam/DOMA-TPC
