@@ -48,9 +48,9 @@ while getopts "h?s:m:xp:q" opt; do
         p)
             persistentState="$OPTARG"
             ;;
-	q)
-	    QUIET=1
-	    ;;
+        q)
+            QUIET=1
+            ;;
     esac
 done
 
@@ -105,7 +105,7 @@ isEndpointInDowntime() { # $1 - endpoint
     rc=$?
 
     if [ $rc -eq 0 ]; then
-	DOWNTIME_DESCRIPTION=$(xsltproc --stringparam fqdn $fqdn share/downtime-description.xsl $DOWNTIME_XML)
+        DOWNTIME_DESCRIPTION=$(xsltproc --stringparam fqdn $fqdn share/downtime-description.xsl $DOWNTIME_XML)
     fi
 
     return $rc
@@ -141,7 +141,7 @@ runTests() {
             [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Skipping: $name [$COUNT/$TOTAL] $options $url\r"
             echo -e "$name\t$type\tGOCDB Downtime: $DOWNTIME_DESCRIPTION" >> $SKIPPED
 
-	else
+        else
 
             [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Testing: $name [$COUNT/$TOTAL] $options $url\r"
 
@@ -159,7 +159,7 @@ runTests() {
             testSuccess=$(sed -n 's/^Of [0-9]* tests.*: \([0-9]*\) successful.*/\1/p' $SMOKE_OUTPUT)
             testNonSuccessful=$(( $testCount - $testSuccess ))
             echo -e "$testNonSuccessful\t$name\t$type\t$(tail -1 $SMOKE_OUTPUT | sed -e 's/[[0-9]*m//g')\t[in $duration]" >> $RESULTS
-	fi
+        fi
     done
     [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}"
 }
@@ -241,8 +241,15 @@ buildReport() {
         echo
         echo "SKIPPED ENDPOINTS"
         echo
-        echo -e "ENDPOINT\tSOFTWARE\tWHY" > $SMOKE_OUTPUT
-        cat $SKIPPED >> $SMOKE_OUTPUT
+        if [ -n "$persistentState" ]; then
+            echo -e "SCORE\tENDPOINT\tSOFTWARE\tWHY" > $SMOKE_OUTPUT
+            while read endpoint rest; do
+                echo -e "${ENDPOINT_SCORE[$endpoint]}\t$endpoint\t$rest"
+            done < $SKIPPED >> $SMOKE_OUTPUT
+        else
+            echo -e "ENDPOINT\tSOFTWARE\tWHY" > $SMOKE_OUTPUT
+            cat $SKIPPED >> $SMOKE_OUTPUT
+        fi
         column -t $SMOKE_OUTPUT -s $'\t'
     fi
 } > $REPORT
