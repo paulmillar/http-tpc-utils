@@ -393,7 +393,7 @@ checkHeader() { # $1 - error if cmd fails, $2 - RE for headers, $3 error if RE d
 #  Simple wrapper around a curl invocation that "remembers" the
 #  command-line.
 doCurl() {
-    TEST_COMMAND=$(eval echo "$@")
+    TEST_COMMAND="$(eval echo \"$@\")"
     eval "$@"
 }
 
