@@ -34,3 +34,4 @@ UKI-LANCS      DPM           -  https://fal-pygrid-30.lancs.ac.uk/dpm/lancs.ac.u
 UKI-MAN        DPM           -  https://vm33.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
 UKI-QMUL       StoRM         -  https://se03.esc.qmul.ac.uk:8443/dteam
 UKI-RAL        DynaFed/ECHO  -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
+UNI-BONN       xrootd/CephFS L  https://xrootd.physik.uni-bonn.de:1094/cephfs/grid/dteam
