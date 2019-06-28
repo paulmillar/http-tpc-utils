@@ -27,11 +27,11 @@ TPC_TIMEOUT=600     # value in seconds
 ##
 DIGEST_TIMEOUT=180  # value in seconds
 
-RESET="\e[0m"
-DIM="\e[2m"
-GREEN="\e[32m"
-RED="\e[31m"
-YELLOW="\e[33m"
+RESET="\x1B[0m"
+DIM="\x1B[2m"
+GREEN="\x1B[32m"
+RED="\x1B[31m"
+YELLOW="\x1B[33m"
 
 SUCCESSFUL=0
 FAILED=0
@@ -65,7 +65,7 @@ fail() {
         echo -e "\nThe curl command that failed:"
         echo -e "\n    $TEST_COMMAND"
         echo -e "\nVerbose output from curl:"
-        awk '{if ($0 ~ /HTTP\/1.1/){colour="\x1B[0m"}else{colour="\x1B[2m"}print "    "colour$0}' < $VERBOSE
+        awk "{if (\$0 ~ /HTTP\/1.1/){colour=\"$RESET\"}else{colour=\"$DIM\"}print \"    \"colour\$0}" < $VERBOSE
         echo -e "$RESET"
     fi
     if [ $fullRun -eq 0 ]; then
