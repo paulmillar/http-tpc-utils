@@ -27,11 +27,6 @@ TPC_TIMEOUT=600     # value in seconds
 ##
 DIGEST_TIMEOUT=180  # value in seconds
 
-RESET="\x1B[0m"
-DIM="\x1B[2m"
-GREEN="\x1B[32m"
-RED="\x1B[31m"
-YELLOW="\x1B[33m"
 
 SUCCESSFUL=0
 FAILED=0
@@ -40,6 +35,22 @@ SKIPPED=0
 fullRun=0
 extended=0
 workarounds=""
+
+withColour() {
+    RESET="\x1B[0m"
+    DIM="\x1B[2m"
+    GREEN="\x1B[32m"
+    RED="\x1B[31m"
+    YELLOW="\x1B[33m"
+}
+
+withoutColour() {
+    unset RESET
+    unset DIM
+    unset GREEN
+    unset RED
+    unset YELLOW
+}
 
 fail() {
     if [ -z "$lastTestFailed" -o "$lastTestFailed" == "0" ]; then
@@ -423,16 +434,16 @@ runCopy() {
         if [ "${lastLine#success}" != "${lastLine}" ]; then
             success
         elif [ "${lastLine#Success}" != "${lastLine}" ]; then # for DPM compatibility
-	    if [[ $workarounds != *S* ]]; then
-		workarounds="${workarounds}S"
-	    fi
+            if [[ $workarounds != *S* ]]; then
+                workarounds="${workarounds}S"
+            fi
             success
         elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
             fail "${lastLine#failure:}"
         else
-	    if [[ $workarounds != *F* ]]; then
-		workarounds="${workarounds}F"
-	    fi
+            if [[ $workarounds != *F* ]]; then
+                workarounds="${workarounds}F"
+            fi
             fail "for an unknown reason"
         fi
     fi
@@ -473,13 +484,18 @@ for dependency in curl jq awk voms-proxy-info dig; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-while getopts "h?fxlL" opt; do
+withColour
+while getopts "h?fxlLCc" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 [-f] [-x] URL"
+            echo "$0 [-f] [-x] [-c] [-C] [-L] URL"
             echo
             echo "  -f  Do not stop on first error"
             echo "  -x  Run additional tests"
+            echo "  -c  Disable colour output"
+            echo "  -C  Enable colour output"
+            echo "  -l  Disable location-trusted work-around"
+            echo "  -L  Enable location-trusted work-around"
             exit 0
             ;;
         f)
@@ -488,13 +504,19 @@ while getopts "h?fxlL" opt; do
         x)
             extended=1
             ;;
-	l)
+        l)
             CURL_RDR_TRUST=""
             ;;
-	L)
-	    CURL_RDR_TRUST="--location-trusted"
-	    workarounds="${workarounds}L"
-	    ;;
+        L)
+            CURL_RDR_TRUST="--location-trusted"
+            workarounds="${workarounds}L"
+            ;;
+        c)
+            withoutColour
+            ;;
+        C)
+            withColour
+            ;;
     esac
 done
 
@@ -911,9 +933,9 @@ if [ $fullRun -eq 1 ]; then
 
     echo -n " Work-arounds: "
     if [ "$workarounds" != "" ]; then
-	echo -n "$workarounds"
+        echo -n "$workarounds"
     else
-	echo -n "(none)"
+        echo -n "(none)"
     fi
 fi
 
