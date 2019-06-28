@@ -484,7 +484,9 @@ for dependency in curl jq awk voms-proxy-info dig; do
     type $dependency >/dev/null || fatal "Missing dependency \"$dependency\".  Please install a package that provides this command."
 done
 
-withColour
+# Check if stdout is sent to a terminal, or redirect to a file.
+if [ -t 1 ] ; then withColour; else withoutColour; fi
+
 while getopts "h?fxlLCc" opt; do
     case "$opt" in
         h|\?)
