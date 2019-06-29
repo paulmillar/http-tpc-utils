@@ -25,6 +25,7 @@ PIC-PROD       dCache        -  https://webdav-dteam.pic.es:8448/tpc-test
 PRAGUELCG2     DPM           -  https://golias100.farm.particle.cz/dpm/farm.particle.cz/home/dteam/tpc-test
 SARA           dCache        -  https://webdav.grid.surfsara.nl:2882/pnfs/grid.sara.nl/data/dteam/DOMA-TPC
 SARA-test      dCache        -  https://dolphin12.grid.surfsara.nl:2882/groups/dteam/DOMA-TPC
+TOKYO-LCG2     DPM           -  https://lcg-se01.icepp.jp:18443/dpm/icepp.jp/home/dteam
 TRIUMF-DYNAFED DynaFed       -  https://atlas-fed-fe1.triumf.ca/dynafed/doma/
 TRIUMF-PPS     dCache        -  https://ppshead.lcg.triumf.ca:2880/dteam
 UKI-BRUNEL     DPM           -  https://dc2-grid-64.brunel.ac.uk/dpm/brunel.ac.uk/home/dteam/wlcg-tpc
