@@ -85,7 +85,6 @@ loadManualSkipped() {
         OLD_IFS="$IFS"
         IFS=": "
         while read name why; do
-            echo "Skipping name=$name why=$why"
             MANUAL_SKIP[$name]="$why"
         done < $MANUAL_SKIP_FILE
         IFS="$OLD_IFS"
