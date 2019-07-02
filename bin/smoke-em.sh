@@ -6,6 +6,11 @@ cleanup() {
     rm -f $FILES_TO_DELETE
 }
 
+fatal() {
+    echo "$@"
+    exit 1
+}
+
 trap cleanup EXIT
 
 BASE=$(cd $(dirname $0)/..;pwd)
@@ -23,16 +28,17 @@ SOUND_ENDPOINT_RE="successful (100%)"
 
 OUTPUT_DESCRIPTION="stdout"
 QUIET=0
-while getopts "h?s:m:xp:q" opt; do
+while getopts "h?s:m:xp:qS:" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>]"
+            echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>] [-S <file>]"
             echo
-            echo "    -s  <addr>   send report as an email"
-            echo "    -m  <mailer> use 'mail' or 'thunderbird' to send email"
+            echo "    -s <addr>    send report as an email to <addr>"
+            echo "    -m <mailer>  use 'mail' or 'thunderbird' to send email"
             echo "    -x           use extended tests, if supported"
             echo "    -p <file>    use <file> for persistent state"
             echo "    -q           limit output to errors and prompts"
+            echo "    -S <file>    skip endpoints listed in <file>"
             exit 0
             ;;
         s)
@@ -51,17 +57,16 @@ while getopts "h?s:m:xp:q" opt; do
         q)
             QUIET=1
             ;;
+        S)
+            MANUAL_SKIP_FILE="$OPTARG"
+            [ -f "$MANUAL_SKIP_FILE" ] || fatal No such file $MANUAL_SKIP_FILE
+            ;;
     esac
 done
 
 shift $((OPTIND-1))
 
 [ "${1:-}" = "--" ] && shift
-
-fatal() {
-    echo "$@"
-    exit 1
-}
 
 case $MAILER in
     mail|thunderbird)
@@ -72,6 +77,20 @@ case $MAILER in
 esac
 
 declare -A ENDPOINT_SCORE
+declare -A MANUAL_SKIP
+
+loadManualSkipped() {
+    if [ -f "$MANUAL_SKIP_FILE" ]; then
+        local OLD_IFS
+        OLD_IFS="$IFS"
+        IFS=": "
+        while read name why; do
+            echo "Skipping name=$name why=$why"
+            MANUAL_SKIP[$name]="$why"
+        done < $MANUAL_SKIP_FILE
+        IFS="$OLD_IFS"
+    fi
+}
 
 downloadGocDbDowntimeInfo() {
     DOWNTIME_XML=$(mktemp)
@@ -96,16 +115,22 @@ writePersistentState() {
 } > $persistentState
 
 
-isEndpointInDowntime() { # $1 - endpoint
-    local without_scheme=${1#https://}
+isEndpointToBeSkipped() { # $1 - name, $2 - endpoint
+    local name="$1"
+    local without_scheme=${2#https://}
     local host_port=$(echo $without_scheme | cut -d '/' -f1)
     local fqdn=$(echo $host_port | cut -d ':' -f1)
 
-    xmllint --xpath "/results/DOWNTIME[HOSTNAME='$fqdn' and SEVERITY='OUTAGE']" $DOWNTIME_XML >/dev/null 2>&1
-    rc=$?
+    if [ -n "${MANUAL_SKIP[$name]}" ]; then
+        SKIP_REASON="${MANUAL_SKIP[$name]}"
+        rc=0
+    else
+        xmllint --xpath "/results/DOWNTIME[HOSTNAME='$fqdn' and SEVERITY='OUTAGE']" $DOWNTIME_XML >/dev/null 2>&1
+        rc=$?
 
-    if [ $rc -eq 0 ]; then
-        DOWNTIME_DESCRIPTION=$(xsltproc --stringparam fqdn $fqdn share/downtime-description.xsl $DOWNTIME_XML)
+        if [ $rc -eq 0 ]; then
+            SKIP_REASON="GOCDB Downtime: $(xsltproc --stringparam fqdn $fqdn share/downtime-description.xsl $DOWNTIME_XML)"
+        fi
     fi
 
     return $rc
@@ -137,9 +162,9 @@ runTests() {
 
         COUNT=$(( $COUNT + 1 ))
 
-        if isEndpointInDowntime $url; then
+        if isEndpointToBeSkipped $name $url; then
             [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}Skipping: $name [$COUNT/$TOTAL] $options $url\r"
-            echo -e "$name\t$type\tGOCDB Downtime: $DOWNTIME_DESCRIPTION" >> $SKIPPED
+            echo -e "$name\t$type\t$SKIP_REASON" >> $SKIPPED
 
         else
 
@@ -303,6 +328,7 @@ voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info -e -hours 1 >/dev/null 2>&1 || fatal "X.509 proxy expires too soon"
 voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
 
+loadManualSkipped
 downloadGocDbDowntimeInfo
 
 [ -f "$persistentState" ] && readPersistentState
