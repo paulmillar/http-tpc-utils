@@ -579,6 +579,7 @@ fi
 
 echo
 echo "Target: $FILE_URL"
+echo "Started at: $(date --iso-8601=m)"
 echo
 echo "DIRECT TRANSFER TESTS"
 echo
