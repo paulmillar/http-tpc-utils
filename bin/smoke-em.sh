@@ -139,6 +139,9 @@ isEndpointToBeSkipped() { # $1 - name, $2 - endpoint
 runTests() {
     local options
 
+    STARTED_AT=$(date +%s)
+
+
     TOTAL=$(wc -l $BASE/etc/endpoints|awk '{print $1}')
     COUNT=0
     cat $BASE/etc/endpoints | while read name type workarounds url; do
@@ -173,7 +176,7 @@ runTests() {
             bin/smoke-test.sh $options $url > $SMOKE_OUTPUT
             result=$?
             elapsedTime=$(( $(date +%s) - $startTime ))
-            duration=$(printf "%02d:%02d" $(($elapsedTime/60)) $(($elapsedTime%60)))
+            duration=$(duration $startTime)
             if [ $result -ne 0 ]; then
                 [ -s $FAILURES ] && echo -e "\n" >> $FAILURES
                 echo $name >> $FAILURES
@@ -186,6 +189,11 @@ runTests() {
         fi
     done
     [ $QUIET -eq 0 ] && echo -n -e "${CLEAR_LINE}"
+}
+
+duration() { # $1 - UNIX time when period started
+    local elapsedTime=$(( $(date +%s) - $1 ))
+    printf "%02d:%02d" $(($elapsedTime/60)) $(($elapsedTime%60))
 }
 
 updateScores() {
@@ -228,7 +236,8 @@ buildReport() {
     fi
 
 
-    echo "DOMA-TPC smoke test $(date --iso-8601=m)"
+    duration=$(duration $STARTED_AT)
+    echo "DOMA-TPC smoke test, started $(date --iso-8601=m -d@$STARTED_AT), took $duration."
 
     if grep -q "$SOUND_ENDPOINT_RE" $RESULTS; then
         haveSoundEndpoints=1
@@ -341,7 +350,7 @@ buildReport
 
 if [ -n "$sendEmail" ]; then
     [ $QUIET -eq 0 ] && echo "Sending email to $sendEmail"
-    date=$(date --iso-8601=m)
+    date=$(date --iso-8601=m -d@$STARTED_AT)
     sendEmail "$sendEmail" "Smoke test report $date"
 else
     cat $REPORT
