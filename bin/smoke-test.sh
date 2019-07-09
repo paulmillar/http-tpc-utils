@@ -440,11 +440,13 @@ runCopy() {
             success
         elif [ "${lastLine#failure:}" != "${lastLine}" ]; then
             fail "${lastLine#failure:}"
+	    lastTestFailed=1
         else
             if [[ $workarounds != *F* ]]; then
                 workarounds="${workarounds}F"
             fi
             fail "for an unknown reason"
+	    lastTestFailed=1
         fi
     fi
 }
