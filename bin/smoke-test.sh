@@ -556,6 +556,13 @@ else
   PROXY=$X509_USER_PROXY
 fi
 
+if [ "x$X509_CERT_DIR" == "x" ]; then
+  TRUST_STORE=/etc/grid-security/certificates
+else
+  echo "Using trust store at $X509_CERT_DIR"
+  TRUST_STORE=$X509_CERT_DIR
+fi
+
 
 VERBOSE=$(mktemp)
 HEADERS=$(mktemp)
@@ -563,7 +570,7 @@ COPY_OUTPUT=$(mktemp)
 FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT $HEADERS"
 trap cleanup EXIT
 
-CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L --capath /etc/grid-security/certificates \$CURL_ADDRESS_SELECTION $CURL_EXTRA_OPTIONS"
+CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L --capath $TRUST_STORE \$CURL_ADDRESS_SELECTION $CURL_EXTRA_OPTIONS"
 CURL_BASE="$CURL_BASE -H 'X-No-Delegate: true'"  # Tell DPM not to request GridSite delegation.
 CURL_BASE="$CURL_BASE $CURL_RDR_TRUST"        # SLAC xrootd redirects, expecting re-authentication.
 CURL_X509="$CURL_BASE --cacert $PROXY -E $PROXY"
