@@ -3,7 +3,8 @@ BEIJING-TEST   DPM           -  https://dpmtest.ihep.ac.cn/dpm/ihep.ac.cn/home/d
 BNL            dCache        -  https://dcdoor06.usatlas.bnl.gov:2881/pnfs/usatlas.bnl.gov/BNLT0D1/SAM
 BRUSSELS       dCache        -  https://maite.iihe.ac.be:2880/pnfs/iihe/dteam
 CA-IAAS        DynaFed       -  https://dynafed02.heprc.uvic.ca:8443/tpc/
-CALTECH        xrootd/HDFS   L  https://transfer-1.ultralight.org:1094/store/user/dteam
+CALTECH        xrootd/HDFS   -  https://transfer-2.ultralight.org:1094/store/user/dteam
+CALTECH2       xrootd/HDFS   L  https://transfer-1.ultralight.org:1094/store/user/dteam
 CERN           EOS           -  https://eosppshttp.cern.ch:443/eos/opstest
 CERN-RC        DPM           -  https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 CERN-TRUNK     DPM           -  https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
