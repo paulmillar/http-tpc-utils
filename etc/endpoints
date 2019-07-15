@@ -6,6 +6,7 @@ CA-IAAS        DynaFed         -  https://dynafed02.heprc.uvic.ca:8443/tpc/
 CALTECH        xrootd-D/HDFS   -  https://transfer-2.ultralight.org:1094/store/user/dteam
 CALTECH2       xrootd-R/HDFS   L  https://transfer-1.ultralight.org:1094/store/user/dteam
 CERN           EOS             -  https://eosppshttp.cern.ch:443/eos/opstest
+CERN-DYN-GRID  DynaFed/GRID    -  https://dynafed-atlas.cern.ch:443/data/dteam/dpm
 CERN-RC        DPM             -  https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 CERN-TRUNK     DPM             -  https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
 DESY-PROM      dCache          -  https://prometheus.desy.de:2443/VOs/dteam
