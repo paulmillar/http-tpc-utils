@@ -37,4 +37,4 @@ UKI-MAN        DPM             -  https://vm33.tier2.hep.manchester.ac.uk/dpm/ti
 UKI-QMUL-DEV   StoRM           -  https://se01.esc.qmul.ac.uk:8443/dteam
 UKI-QMUL-PROD  StoRM           -  https://se03.esc.qmul.ac.uk:8443/dteam
 UKI-RAL        DynaFed/ECHO    -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
-UNI-BONN       xrootd-R/CephFS L  https://xrootd.physik.uni-bonn.de:1094/cephfs/grid/dteam
+UNI-BONN       xrootd-R/CephFS -  https://xrootd.physik.uni-bonn.de:1094/cephfs/grid/dteam
