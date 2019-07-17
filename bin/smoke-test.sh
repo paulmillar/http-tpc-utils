@@ -702,7 +702,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         TARGET_MACAROON="$THIS_ADDR_TARGET_MACAROON"
     fi
 
-    CURL_MACAROON="$CURL_BASE -H \"Authorization: Bearer $TARGET_MACAROON\"" # NB. StoRM requires "Bearer" not "bearer"
+    CURL_MACAROON="$CURL_BASE -H 'Authorization: Bearer $TARGET_MACAROON'" # NB. StoRM requires "Bearer" not "bearer"
 
     echo -n "Uploading to target with macaroon authz: "
     if [ $macaroonFailed -eq 0 ]; then
