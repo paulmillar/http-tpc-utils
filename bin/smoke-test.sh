@@ -758,7 +758,8 @@ echo -n "Deleting target with X.509: "
 if [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
-    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "Delete failed"
 fi
 
 echo -n "Initiating an unauthenticated HTTP PULL, authz with macaroon to target"
@@ -775,7 +776,8 @@ if [ $macaroonFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
-    doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE || fail "Delete failed" && success
+    doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    checkResult "Delete failed"
 fi
 
 echo -n "Requesting (from prometheus) DOWNLOAD macaroon for a private file: "
