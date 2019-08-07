@@ -695,20 +695,20 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     activityList="DOWNLOAD,UPLOAD,DELETE"
     activityList="$activityList,LIST"   # DPM requires LIST for an RFC-3230 HEAD requests
     echo -n "Request $activityList macaroon from target: "
-    requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_MACAROON thisAddrMacaroonFailed
+    requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_TOKEN thisAddrMacaroonFailed
 
     if [ $thisAddrMacaroonFailed -eq 0 ]; then
         macaroonFailed=0
-        TARGET_MACAROON="$THIS_ADDR_TARGET_MACAROON"
+        TARGET_TOKEN="$THIS_ADDR_TARGET_TOKEN"
     fi
 
-    CURL_MACAROON="$CURL_BASE -H 'Authorization: Bearer $TARGET_MACAROON'" # NB. StoRM requires "Bearer" not "bearer"
+    CURL_TOKEN="$CURL_BASE -H 'Authorization: Bearer $TARGET_TOKEN'" # NB. StoRM requires "Bearer" not "bearer"
 
     echo -n "Uploading to target with macaroon authz: "
     if [ $macaroonFailed -eq 0 ]; then
-        doCurl $CURL_MACAROON $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_TOKEN $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Upload failed" uploadFailed
-        [ $uploadFailed -ne 0 ] && eval $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+        [ $uploadFailed -ne 0 ] && eval $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
         skipped "no macaroon"
     fi
@@ -719,7 +719,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        doCurl $CURL_MACAROON $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_TOKEN $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Download failed"
     fi
 
@@ -729,7 +729,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        doCurl $CURL_MACAROON $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_TOKEN $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
         checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
     fi
 
@@ -739,7 +739,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
+        doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
         checkResult "Delete failed"
     fi
 
@@ -767,7 +767,7 @@ if [ $macaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
 else
-    runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
+    runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
 fi
 
 echo -n "Deleting target with macaroon: "
@@ -776,7 +776,7 @@ if [ $macaroonFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
-    doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Delete failed"
 fi
 
@@ -809,7 +809,7 @@ elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     echo -n ": "
     skipped "no TPC macaroon"
 else
-    runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
+    runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
 fi
 
 echo -n "Deleting target with macaroon: "
@@ -820,7 +820,7 @@ elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "third-party transfer failed"
 else
-    doCurl $CURL_MACAROON -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult
 fi
 
@@ -879,7 +879,7 @@ elif [ $sourceUploadFailed -ne 0 ]; then
     echo -n ": "
     skipped "source upload failed"
 else
-    runCopy $CURL_MACAROON $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL
+    runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL
 fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
