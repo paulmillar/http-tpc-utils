@@ -620,7 +620,7 @@ if [ $CURL_HAS_CONNECT_TO -eq 0 ]; then
     ALL_IP_ADDRESSES=$(echo "$ALL_IP_ADDRESSES" | awk '{print $1;}')
 fi
 
-macaroonFailed=1
+tokenFailed=1
 IP_ADDRESS_COUNTER=1
 for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
@@ -695,17 +695,17 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     activityList="DOWNLOAD,UPLOAD,DELETE"
     activityList="$activityList,LIST"   # DPM requires LIST for an RFC-3230 HEAD requests
     echo -n "Request $activityList macaroon from target: "
-    requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_TOKEN thisAddrMacaroonFailed
+    requestMacaroon $activityList $FILE_URL THIS_ADDR_TARGET_TOKEN thisAddrTokenFailed
 
-    if [ $thisAddrMacaroonFailed -eq 0 ]; then
-        macaroonFailed=0
+    if [ $thisAddrTokenFailed -eq 0 ]; then
+        tokenFailed=0
         TARGET_TOKEN="$THIS_ADDR_TARGET_TOKEN"
     fi
 
     CURL_TOKEN="$CURL_BASE -H 'Authorization: Bearer $TARGET_TOKEN'" # NB. StoRM requires "Bearer" not "bearer"
 
     echo -n "Uploading to target with macaroon authz: "
-    if [ $macaroonFailed -eq 0 ]; then
+    if [ $tokenFailed -eq 0 ]; then
         doCurl $CURL_TOKEN $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Upload failed" uploadFailed
         [ $uploadFailed -ne 0 ] && eval $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
@@ -714,7 +714,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     fi
 
     echo -n "Downloading from target with macaroon authz: "
-    if [ $macaroonFailed -ne 0 ]; then
+    if [ $tokenFailed -ne 0 ]; then
         skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
@@ -724,7 +724,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     fi
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
-    if [ $macaroonFailed -ne 0 ]; then
+    if [ $tokenFailed -ne 0 ]; then
         skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
@@ -734,7 +734,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     fi
 
     echo -n "Deleting target with macaroon authz: "
-    if [ $macaroonFailed -ne 0 ]; then
+    if [ $tokenFailed -ne 0 ]; then
         skipped "no macaroon"
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
@@ -763,7 +763,7 @@ else
 fi
 
 echo -n "Initiating an unauthenticated HTTP PULL, authz with macaroon to target"
-if [ $macaroonFailed -ne 0 ]; then
+if [ $tokenFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
 else
@@ -771,7 +771,7 @@ else
 fi
 
 echo -n "Deleting target with macaroon: "
-if [ $macaroonFailed -ne 0 ]; then
+if [ $tokenFailed -ne 0 ]; then
     skipped "no macaroon"
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
@@ -802,7 +802,7 @@ else
 fi
 
 echo -n "Initiating a macaroon authz HTTP PULL, authz with macaroon to target"
-if [ $macaroonFailed -ne 0 ]; then
+if [ $tokenFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
 elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
@@ -813,7 +813,7 @@ else
 fi
 
 echo -n "Deleting target with macaroon: "
-if [ $macaroonFailed -ne 0 ]; then
+if [ $tokenFailed -ne 0 ]; then
     skipped "no macaroon"
 elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
     skipped "no TPC macaroon"
@@ -869,7 +869,7 @@ else
 fi
 
 echo -n "Initiating a macaroon authz HTTP PUSH, authz with macaroon to target"
-if [ $macaroonFailed -ne 0 ]; then
+if [ $tokenFailed -ne 0 ]; then
     echo -n ": "
     skipped "no macaroon"
 elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
@@ -883,7 +883,7 @@ else
 fi
 
 echo -n "Deleting file pushed to third party, with X.509: "
-if [ $macaroonFailed -ne 0 ]; then
+if [ $tokenFailed -ne 0 ]; then
     skipped "no macaroon"
 elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
     skipped "no TPC macaroon"
