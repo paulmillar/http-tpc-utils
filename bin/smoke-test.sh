@@ -3,10 +3,6 @@
 #  Simple tests to verify endpoint is ready for DOMA-TPC
 #
 
-THIRDPARTY_UNAUTHENTICATED_URL=https://prometheus.desy.de:2443/Video/BlenderFoundation/Sintel.webm
-THIRDPARTY_PRIVATE_URL=https://prometheus.desy.de:2443/VOs/dteam/private-file
-THIRDPARTY_UPLOAD_BASE_URL=https://prometheus.desy.de:2443/VOs/dteam
-
 CONNECT_TIMEOUT=60  # value in seconds
 
 ## Drop transfer if average bandwidth over SPEED_TIME is less than
@@ -32,6 +28,11 @@ TPC_TIMEOUT=600     # value in seconds
 DIGEST_TIMEOUT=180  # value in seconds
 
 
+DTEAM_THIRDPARTY_UNAUTHENTICATED_URL=https://prometheus.desy.de:2443/Video/BlenderFoundation/Sintel.webm
+DTEAM_THIRDPARTY_PRIVATE_URL=https://prometheus.desy.de:2443/VOs/dteam/private-file
+DTEAM_SCITOKEN_SERVER=https://scitokens.org/dteam
+DTEAM_THIRDPARTY_UPLOAD_BASE_URL=https://prometheus.desy.de:2443/VOs/dteam
+
 SUCCESSFUL=0
 FAILED=0
 SKIPPED=0
@@ -41,6 +42,7 @@ extended=0
 tokenType=macaroon
 workarounds=""
 debugOutput=0
+vo=dteam
 
 withColour() {
     RESET="\x1B[0m"
@@ -546,10 +548,10 @@ done
 # Check if stdout is sent to a terminal, or redirect to a file.
 if [ -t 1 ] ; then withColour; else withoutColour; fi
 
-while getopts "h?t:fxlLCcd" opt; do
+while getopts "h?t:v:p:r:u:s:fxlLCcd" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 [-f] [-x] [-c] [-C] [-L] [-t <token>] [-d] URL"
+            echo "$0 [-f] [-x] [-c] [-C] [-L] [-t <token>] [-d] [-v <vo>] [-p <url>] [-u <url>] [-s <url>] URL"
             echo
             echo "  -f         Do not stop on first error"
             echo "  -x         Run additional tests"
@@ -559,6 +561,17 @@ while getopts "h?t:fxlLCcd" opt; do
             echo "  -L         Enable location-trusted work-around"
             echo "  -t <token> Use <token> for non-X.509 authn to target"
             echo "  -d         Include additional logging"
+            echo "  -v <vo>    Test as member of VO <vo>"
+            echo "  -p <url>   Use <url> as the public link for TPC PULL"
+            echo "  -r <url>   Use <url> as the VO-private link for TPC PULL"
+            echo "  -u <url>   Use <url> as the base for HTTP PUSH"
+            echo "  -s <url>   SciToken server"
+            echo
+            echo "For VO dteam, defaults are:"
+            echo "  -s $DTEAM_SCITOKEN_SERVER"
+            echo "  -p $DTEAM_THIRDPARTY_UNAUTHENTICATED_URL"
+            echo "  -r $DTEAM_THIRDPARTY_PRIVATE_URL"
+            echo "  -u $DTEAM_THIRDPARTY_UPLOAD_BASE_URL"
             exit 0
             ;;
         f)
@@ -596,8 +609,45 @@ while getopts "h?t:fxlLCcd" opt; do
         d)
             debugOutput=1
             ;;
+        v)
+            vo=$OPTARG
+            ;;
+        p)
+            THIRDPARTY_UNAUTHENTICATED_URL=$OPTARG
+            ;;
+        r)
+            THIRDPARTY_PRIVATE_URL=$OPTARG
+            ;;
+        u)
+            THIRDPARTY_UPLOAD_BASE_URL=$OPTARG
+            ;;
+        s)
+            sciTokenServer=$OPTARG
     esac
 done
+
+case $vo in
+    dteam)
+        if [ "$sciTokenServer" = "" ]; then
+            sciTokenServer=$DTEAM_SCITOKEN_SERVER
+        fi
+
+        if [ "$THIRDPARTY_UNAUTHENTICATED_URL" = "" ]; then
+            THIRDPARTY_UNAUTHENTICATED_URL=$DTEAM_THIRDPARTY_UNAUTHENTICATED_URL
+        fi
+
+        if [ "$THIRDPARTY_PRIVATE_URL" = "" ]; then
+            THIRDPARTY_PRIVATE_URL=$DTEAM_THIRDPARTY_PRIVATE_URL
+        fi
+
+        if [ "$THIRDPARTY_UPLOAD_BASE_URL" = "" ]; then
+            THIRDPARTY_UPLOAD_BASE_URL=$DTEAM_THIRDPARTY_UPLOAD_BASE_URL
+        fi
+        ;;
+    *)
+        [ "$tokenType" = "scitoken" ] && [ "$sciTokenServer" = "" ] && fatal "No SciToken server for VO $vo"
+        ;;
+esac
 
 shift $((OPTIND-1))
 
@@ -622,7 +672,7 @@ else
 fi
 
 voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
-voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
+voms-proxy-info --acexists $vo 2>/dev/null || fatal "X.509 proxy does not assert $vo membership"
 
 if [ "x$X509_USER_PROXY" == "x" ]; then
   PROXY=/tmp/x509up_u$(id -u)
@@ -701,7 +751,7 @@ fi
 case $tokenType in
     SciToken)
         NON_SUT_TEST=1
-        requestSciToken "" https://scitokens.org/dteam TARGET_TOKEN tokenFailed
+        requestSciToken "" $sciTokenServer TARGET_TOKEN tokenFailed
         unset NON_SUT_TEST
         ;;
 
@@ -841,163 +891,172 @@ done
 
 unset CURL_ADDRESS_SELECTION
 
-echo
-echo "THIRD PARTY PULL TESTS"
-echo
+if [ "$THIRDPARTY_UNAUTHENTICATED_URL" != "" ] || [ "$THIRDPARTY_PRIVATE_URL" != "" ]; then
 
-echo -n "Initiating an unauthenticated HTTP PULL, authn with X.509 to target"
-runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
+    echo
+    echo "THIRD PARTY PULL TESTS"
+    echo
 
-echo -n "Deleting target with X.509: "
-if [ $lastTestFailed -ne 0 ]; then
-    skipped "upload failed"
-else
-    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Delete failed"
+    if [ "$THIRDPARTY_UNAUTHENTICATED_URL" != "" ]; then
+        echo -n "Initiating an unauthenticated HTTP PULL, authn with X.509 to target"
+        runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
+
+        echo -n "Deleting target with X.509: "
+        if [ $lastTestFailed -ne 0 ]; then
+            skipped "upload failed"
+        else
+            doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+            checkResult "Delete failed"
+        fi
+
+        echo -n "Initiating an unauthenticated HTTP PULL, authz with $tokenType to target"
+        if [ $tokenFailed -ne 0 ]; then
+            echo -n ": "
+            skipped "no $tokenType"
+        else
+            runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
+        fi
+
+        echo -n "Deleting target with $tokenType: "
+        if [ $tokenFailed -ne 0 ]; then
+            skipped "no $tokenType"
+        elif [ $lastTestFailed -ne 0 ]; then
+            skipped "upload failed"
+        else
+            doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+            checkResult "Delete failed"
+        fi
+    fi
+
+    if [ "$THIRDPARTY_PRIVATE_URL" != "" ]; then
+        echo -n "Requesting (from third-party) DOWNLOAD macaroon for a private file: "
+        requestRemoteMacaroon DOWNLOAD $THIRDPARTY_PRIVATE_URL THIRDPARTY_DOWNLOAD_MACAROON tpcDownloadMacaroonFailed
+
+        echo -n "Initiating a macaroon authz HTTP PULL, authn with X.509 to target"
+        if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
+            echo -n ": "
+            skipped "no TPC macaroon"
+        else
+            runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\' -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
+        fi
+
+        echo -n "Deleting target with X.509: "
+        if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
+            skipped "no TPC macaroon"
+        elif [ $lastTestFailed -ne 0 ]; then
+            skipped "third-party transfer failed"
+        else
+            doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+            checkResult
+        fi
+
+        echo -n "Initiating a macaroon authz HTTP PULL, authz with $tokenType to target"
+        if [ $tokenFailed -ne 0 ]; then
+            echo -n ": "
+            skipped "no $tokenType"
+        elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
+            echo -n ": "
+            skipped "no TPC macaroon"
+        else
+            runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
+        fi
+
+        echo -n "Deleting target with $tokenType: "
+        if [ $tokenFailed -ne 0 ]; then
+            skipped "no $tokenType"
+        elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
+            skipped "no TPC macaroon"
+        elif [ $lastTestFailed -ne 0 ]; then
+            skipped "third-party transfer failed"
+        else
+            doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+            checkResult
+        fi
+    fi
 fi
 
-echo -n "Initiating an unauthenticated HTTP PULL, authz with $tokenType to target"
-if [ $tokenFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "no $tokenType"
-else
-    runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"Source: $THIRDPARTY_UNAUTHENTICATED_URL\" $FILE_URL
-fi
+if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
+    echo
+    echo "THIRD PARTY PUSH TESTS"
+    echo
 
-echo -n "Deleting target with $tokenType: "
-if [ $tokenFailed -ne 0 ]; then
-    skipped "no $tokenType"
-elif [ $lastTestFailed -ne 0 ]; then
-    skipped "upload failed"
-else
-    doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Delete failed"
-fi
+    THIRDPARTY_UPLOAD_URL=$THIRDPARTY_UPLOAD_BASE_URL/smoke-test-push-$(uname -n)-$$
 
-echo -n "Requesting (from prometheus) DOWNLOAD macaroon for a private file: "
-requestRemoteMacaroon DOWNLOAD $THIRDPARTY_PRIVATE_URL THIRDPARTY_DOWNLOAD_MACAROON tpcDownloadMacaroonFailed
+    echo "Third party push target: $THIRDPARTY_UPLOAD_URL"
+    echo
 
-echo -n "Initiating a macaroon authz HTTP PULL, authn with X.509 to target"
-if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "no TPC macaroon"
-else
-    runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\' -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
-fi
+    echo -n "Requesting (from third-party) UPLOAD,DELETE macaroon to third party push target: "
+    requestRemoteMacaroon UPLOAD,DELETE $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
 
-echo -n "Deleting target with X.509: "
-if [ $tpcDownloadMacaroonFailed -ne 0 ]; then
-    skipped "no TPC macaroon"
-elif [ $lastTestFailed -ne 0 ]; then
-    skipped "third-party transfer failed"
-else
-    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult
-fi
+    echo -n "Uploading target, authn with X.509: "
+    if [ $tpcUploadMacaroonFailed -ne 0 ]; then
+        skipped "no third-party macaroon"
+    else
+        doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
+        checkResult "Upload failed" sourceUploadFailed
+        [ $sourceUploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+    fi
 
-echo -n "Initiating a macaroon authz HTTP PULL, authz with $tokenType to target"
-if [ $tokenFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "no $tokenType"
-elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "no TPC macaroon"
-else
-    runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_DOWNLOAD_MACAROON\" -H \"Source: $THIRDPARTY_PRIVATE_URL\" $FILE_URL
-fi
+    echo -n "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target"
+    if [ $tpcUploadMacaroonFailed -ne 0 ]; then
+        echo -n ": "
+        skipped "no third-party macaroon"
+    elif [ $sourceUploadFailed -ne 0 ]; then
+        echo -n ": "
+        skipped "source upload failed"
+    else
+        runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\' -H \'Destination: $THIRDPARTY_UPLOAD_URL\' $FILE_URL
+    fi
 
-echo -n "Deleting target with $tokenType: "
-if [ $tokenFailed -ne 0 ]; then
-    skipped "no $tokenType"
-elif [ $tpcDownloadMacaroonFailed -ne 0 ]; then
-    skipped "no TPC macaroon"
-elif [ $lastTestFailed -ne 0 ]; then
-    skipped "third-party transfer failed"
-else
-    doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult
-fi
+    echo -n "Deleting file pushed to third party, with X.509: "
+    if [ $tpcUploadMacaroonFailed -ne 0 ]; then
+        skipped "no third-party macaroon"
+    elif [ $sourceUploadFailed -ne 0 ]; then
+        skipped "source upload failed"
+    elif [ $lastTestFailed -ne 0 ]; then
+        skipped "push failed"
+    else
+        doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+        checkResult "delete failed"
+    fi
 
-echo
-echo "THIRD PARTY PUSH TESTS"
-echo
+    echo -n "Initiating a macaroon authz HTTP PUSH, authz with $tokenType to target"
+    if [ $tokenFailed -ne 0 ]; then
+        echo -n ": "
+        skipped "no $tokenType"
+    elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
+        echo -n ": "
+        skipped "no third-party macaroon"
+    elif [ $sourceUploadFailed -ne 0 ]; then
+        echo -n ": "
+        skipped "source upload failed"
+    else
+        runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL
+    fi
 
-THIRDPARTY_UPLOAD_URL=$THIRDPARTY_UPLOAD_BASE_URL/smoke-test-push-$(uname -n)-$$
+    echo -n "Deleting file pushed to third party, with X.509: "
+    if [ $tokenFailed -ne 0 ]; then
+        skipped "no $tokenType"
+    elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
+        skipped "no TPC macaroon"
+    elif [ $sourceUploadFailed -ne 0 ]; then
+        skipped "source upload failed"
+    elif [ $lastTestFailed -ne 0 ]; then
+        skipped "push failed"
+    else
+        doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+        checkResult "delete failed"
+    fi
 
-echo "Third party push target: $THIRDPARTY_UPLOAD_URL"
-echo
-
-echo -n "Requesting (from prometheus) UPLOAD,DELETE macaroon to third party push target: "
-requestRemoteMacaroon UPLOAD,DELETE $THIRDPARTY_UPLOAD_URL THIRDPARTY_UPLOAD_MACAROON tpcUploadMacaroonFailed
-
-echo -n "Uploading target, authn with X.509: "
-if [ $tpcUploadMacaroonFailed -ne 0 ]; then
-    skipped "no third-party macaroon"
-else
-    doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Upload failed" sourceUploadFailed
-    [ $sourceUploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
-fi
-
-echo -n "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target"
-if [ $tpcUploadMacaroonFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "no third-party macaroon"
-elif [ $sourceUploadFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "source upload failed"
-else
-    runCopy $CURL_X509 $ENFORCE_TPC_TIMEOUT -X COPY -H \'TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\' -H \'Destination: $THIRDPARTY_UPLOAD_URL\' $FILE_URL
-fi
-
-echo -n "Deleting file pushed to third party, with X.509: "
-if [ $tpcUploadMacaroonFailed -ne 0 ]; then
-    skipped "no third-party macaroon"
-elif [ $sourceUploadFailed -ne 0 ]; then
-    skipped "source upload failed"
-elif [ $lastTestFailed -ne 0 ]; then
-    skipped "push failed"
-else
-    doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
-    checkResult "delete failed"
-fi
-
-echo -n "Initiating a macaroon authz HTTP PUSH, authz with $tokenType to target"
-if [ $tokenFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "no $tokenType"
-elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "no third-party macaroon"
-elif [ $sourceUploadFailed -ne 0 ]; then
-    echo -n ": "
-    skipped "source upload failed"
-else
-    runCopy $CURL_TOKEN $ENFORCE_TPC_TIMEOUT -X COPY -H \"TransferHeaderAuthorization: bearer $THIRDPARTY_UPLOAD_MACAROON\" -H \"Destination: $THIRDPARTY_UPLOAD_URL\" $FILE_URL
-fi
-
-echo -n "Deleting file pushed to third party, with X.509: "
-if [ $tokenFailed -ne 0 ]; then
-    skipped "no $tokenType"
-elif [ $tpcUploadMacaroonFailed -ne 0 ]; then
-    skipped "no TPC macaroon"
-elif [ $sourceUploadFailed -ne 0 ]; then
-    skipped "source upload failed"
-elif [ $lastTestFailed -ne 0 ]; then
-    skipped "push failed"
-else
-    doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
-    checkResult "delete failed"
-fi
-
-echo -n "Deleting target with X.509: "
-if [ $tpcUploadMacaroonFailed -ne 0 ]; then
-    skipped "no TPC UPLOAD macaroon"
-elif [ $sourceUploadFailed -ne 0 ]; then
-    skipped "source upload failed"
-else
-    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "delete failed"
+    echo -n "Deleting target with X.509: "
+    if [ $tpcUploadMacaroonFailed -ne 0 ]; then
+        skipped "no TPC UPLOAD macaroon"
+    elif [ $sourceUploadFailed -ne 0 ]; then
+        skipped "source upload failed"
+    else
+        doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        checkResult "delete failed"
+    fi
 fi
 
 if [ $fullRun -eq 1 ]; then
