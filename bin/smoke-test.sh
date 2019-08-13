@@ -27,6 +27,9 @@ TPC_TIMEOUT=600     # value in seconds
 ##
 DIGEST_TIMEOUT=180  # value in seconds
 
+## Total time allowed for a DELETE request to complete.
+##
+DELETE_TIMEOUT=30   # value in seconds
 
 THIRDPARTY_UNAUTHENTICATED_URL=https://prometheus.desy.de:2443/Video/BlenderFoundation/Sintel.webm
 
@@ -794,7 +797,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     echo -n "Uploading to target with X.509 authn: "
     doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Upload failed" uploadFailed
-    [ $uploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+    [ $uploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 
     echo -n "Downloading from target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
@@ -840,7 +843,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     echo -n "Deleting target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
-        doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Delete failed"
     else
         skipped "upload failed"
@@ -866,7 +869,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     if [ $tokenFailed -eq 0 ]; then
         doCurl $CURL_TOKEN $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Upload failed" uploadFailed
-        [ $uploadFailed -ne 0 ] && eval $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+        [ $uploadFailed -ne 0 ] && eval $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
         skipped "no $tokenType"
     fi
@@ -897,7 +900,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     elif [ $uploadFailed -ne 0 ]; then
         skipped "upload failed"
     else
-        doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL  2>$VERBOSE
+        doCurl $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL  2>$VERBOSE
         checkResult "Delete failed"
     fi
 
@@ -916,7 +919,7 @@ echo -n "Deleting target with X.509: "
 if [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
-    doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Delete failed"
 fi
 
@@ -934,7 +937,7 @@ if [ $tokenFailed -ne 0 ]; then
 elif [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
-    doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+    doCurl $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
     checkResult "Delete failed"
 fi
 
@@ -956,7 +959,7 @@ if [ "$THIRDPARTY_PRIVATE_URL" != "" ]; then
     elif [ $lastTestFailed -ne 0 ]; then
         skipped "third-party transfer failed"
     else
-        doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult
     fi
 
@@ -979,7 +982,7 @@ if [ "$THIRDPARTY_PRIVATE_URL" != "" ]; then
     elif [ $lastTestFailed -ne 0 ]; then
         skipped "third-party transfer failed"
     else
-        doCurl $CURL_TOKEN -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult
     fi
 fi
@@ -1003,7 +1006,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
     else
         doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "Upload failed" sourceUploadFailed
-        [ $sourceUploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
+        [ $sourceUploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     fi
 
     echo -n "Initiating a macaroon authz HTTP PUSH, authn with X.509 to target"
@@ -1025,7 +1028,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
     elif [ $lastTestFailed -ne 0 ]; then
         skipped "push failed"
     else
-        doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
         checkResult "delete failed"
     fi
 
@@ -1053,7 +1056,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
     elif [ $lastTestFailed -ne 0 ]; then
         skipped "push failed"
     else
-        doCurl $CURL_X509 -X DELETE -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
         checkResult "delete failed"
     fi
 
@@ -1063,7 +1066,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
     elif [ $sourceUploadFailed -ne 0 ]; then
         skipped "source upload failed"
     else
-        doCurl $CURL_X509 -X DELETE -o/dev/null $FILE_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
         checkResult "delete failed"
     fi
 fi
