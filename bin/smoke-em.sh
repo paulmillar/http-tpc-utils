@@ -78,6 +78,8 @@ esac
 
 declare -A ENDPOINT_SCORE
 declare -A MANUAL_SKIP
+declare -A SOFTWARE_COUNT
+declare -A SOFTWARE_TOTAL_SCORE
 
 loadManualSkipped() {
     if [ -f "$MANUAL_SKIP_FILE" ]; then
@@ -197,7 +199,7 @@ duration() { # $1 - UNIX time when period started
 }
 
 updateScores() {
-    while read ignore endpoint rest; do
+    while read ignore endpoint type rest; do
         case $rest in
             *${SOUND_ENDPOINT_RE}*)
                 ENDPOINT_SCORE[$endpoint]=$(( ${ENDPOINT_SCORE[$endpoint]} + 1 ))
@@ -212,7 +214,23 @@ updateScores() {
                 fi
                 ;;
         esac
+        SOFTWARE_COUNT[$type]=$(( ${SOFTWARE_COUNT[$type]} + 1 ))
+        SOFTWARE_TOTAL_SCORE[$type]=$(( ${SOFTWARE_TOTAL_SCORE[$type]} + ${ENDPOINT_SCORE[$endpoint]} ))
     done < $RESULTS
+}
+
+# Function round(precision, number), from
+# https://unix.stackexchange.com/questions/265119/how-to-format-floating-point-number-with-exactly-2-significant-digits-in-bash
+round() { # $1=sig.fig, $2=value
+    n=$(printf "%.${1}g" "$2")
+    if [ "$n" != "${n#*e}" ]
+    then
+        f="${n##*e-}"
+        test "$n" = "$f" && f= || f=$(( ${f#0}+$1-1 ))
+        printf "%0.${f}f" "$n"
+    else
+        printf "%s" "$n"
+    fi
 }
 
 buildReport() {
@@ -284,6 +302,25 @@ buildReport() {
             cat $SKIPPED >> $SMOKE_OUTPUT
         fi
         column -t $SMOKE_OUTPUT -s $'\t'
+    fi
+
+    if [ ${#SOFTWARE_COUNT[*]} -gt 0 ]; then
+        echo
+        echo "SOFTWARE SCORES"
+        echo
+        for type in "${!SOFTWARE_COUNT[@]}"; do
+            count=${SOFTWARE_COUNT[$type]}
+            total=${SOFTWARE_TOTAL_SCORE[$type]}
+            if [ "$total" = "" ] || [ $count -eq 0 ]; then
+                average="-"
+            else
+                average=$(round 2 $(( $total / $count )) )
+            fi
+            echo -e "$type\t$count\t$average"
+        done | sort > $SMOKE_OUTPUT
+        echo -e "SOFTWARE\tENDPOINT COUNT\tAVERAGE SCORE" \
+            | cat - $SMOKE_OUTPUT \
+            | column -t -s $'\t'
     fi
 } > $REPORT
 
