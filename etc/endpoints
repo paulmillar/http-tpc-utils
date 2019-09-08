@@ -25,7 +25,8 @@ UKI-BRUNEL     DPM           -  https://dc2-grid-64.brunel.ac.uk/dpm/brunel.ac.u
 UKI-GLASGOW    DPM           -  https://svr018.gla.scotgrid.ac.uk/dpm/gla.scotgrid.ac.uk/home/dteam
 UKI-IC         dCache        -  https://gfe02.grid.hep.ph.ic.ac.uk:2880/pnfs/hep.ph.ic.ac.uk/data/dteam/wlcg-tpc
 UKI-LANCS      DPM           -  https://fal-pygrid-30.lancs.ac.uk/dpm/lancs.ac.uk/home/dteam
-UKI-MAN        DPM           -  https://vm33.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
+UKI-MAN        DPM           -  https://vm33.in.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
+UKI-MAN-PROD   DPM           -  https://bohr3226.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
 UKI-QMUL       StoRM         -  https://se03.esc.qmul.ac.uk:8443/dteam
 UKI-RAL        DynaFed/ECHO  -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
 TRIUMF-DYNAFED DynaFed       -  https://atlas-fed-fe1.triumf.ca/dynafed/doma/
