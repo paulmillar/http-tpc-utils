@@ -25,6 +25,8 @@ NEBRASKA       xrootd-D/HDFS   -  https://red-gridftp12.unl.edu:1094/user/dteam
 NEBRASKA2      xrootd-R/HDFS   -  https://xrootd-local.unl.edu:1094/user/dteam
 PIC-PROD       dCache          -  https://webdav-dteam.pic.es:8448/tpc-test
 PRAGUELCG2     DPM             -  https://golias100.farm.particle.cz/dpm/farm.particle.cz/home/dteam/tpc-test
+PURDUE         xrootd-D/HDFS   -  https://cms-c000.rcac.purdue.edu:1094/VO/dteam
+PURDUE2        xrootd-R/HDFS   -  https://xrootd.rcac.purdue.edu:1094/VO/dteam
 SARA           dCache          -  https://webdav.grid.surfsara.nl:2882/pnfs/grid.sara.nl/data/dteam/DOMA-TPC
 SARA-test      dCache          -  https://dolphin12.grid.surfsara.nl:2882/groups/dteam/DOMA-TPC
 TOKYO-LCG2     DPM             -  https://lcg-se01.icepp.jp:18443/dpm/icepp.jp/home/dteam
