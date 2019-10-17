@@ -40,6 +40,9 @@ DTEAM_THIRDPARTY_UPLOAD_BASE_URL=https://prometheus.desy.de:2443/VOs/dteam
 ESCAPE_THIRDPARTY_PRIVATE_URL=https://prometheus.desy.de:2443/VOs/escape/private-file
 ESCAPE_THIRDPARTY_UPLOAD_BASE_URL=https://prometheus.desy.de:2443/VOs/escape
 
+ATLAS_THIRDPARTY_PRIVATE_URL=https://prometheus.desy.de:2443/VOs/atlas/private-file
+ATLAS_THIRDPARTY_UPLOAD_BASE_URL=https://prometheus.desy.de:2443/VOs/atlas
+
 SUCCESSFUL=0
 FAILED=0
 SKIPPED=0
@@ -585,6 +588,10 @@ while getopts "h?t:v:p:r:u:s:fxlLCcd" opt; do
             echo "For VO escape, defaults are:"
             echo "  -r $ESCAPE_THIRDPARTY_PRIVATE_URL"
             echo "  -u $ESCAPE_THIRDPARTY_UPLOAD_BASE_URL"
+            echo
+            echo "For VO atlas, defaults are:"
+            echo "  -r $ATLAS_THIRDPARTY_PRIVATE_URL"
+            echo "  -u $ATLAS_THIRDPARTY_UPLOAD_BASE_URL"
             exit 0
             ;;
         f)
@@ -653,6 +660,7 @@ case $vo in
             THIRDPARTY_UPLOAD_BASE_URL=$DTEAM_THIRDPARTY_UPLOAD_BASE_URL
         fi
         ;;
+
     escape)
         if [ "$THIRDPARTY_PRIVATE_URL" = "" ]; then
             THIRDPARTY_PRIVATE_URL=$ESCAPE_THIRDPARTY_PRIVATE_URL
@@ -660,6 +668,16 @@ case $vo in
 
         if [ "$THIRDPARTY_UPLOAD_BASE_URL" = "" ]; then
             THIRDPARTY_UPLOAD_BASE_URL=$ESCAPE_THIRDPARTY_UPLOAD_BASE_URL
+        fi
+        ;;
+
+    atlas)
+        if [ "$THIRDPARTY_PRIVATE_URL" = "" ]; then
+            THIRDPARTY_PRIVATE_URL=$ATLAS_THIRDPARTY_PRIVATE_URL
+        fi
+
+        if [ "$THIRDPARTY_UPLOAD_BASE_URL" = "" ]; then
+            THIRDPARTY_UPLOAD_BASE_URL=$ATLAS_THIRDPARTY_UPLOAD_BASE_URL
         fi
         ;;
 esac
