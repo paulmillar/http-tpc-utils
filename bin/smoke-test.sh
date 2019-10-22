@@ -564,10 +564,10 @@ done
 # Check if stdout is sent to a terminal, or redirect to a file.
 if [ -t 1 ] ; then withColour; else withoutColour; fi
 
-while getopts "h?t:v:p:r:u:s:fxlLCcd" opt; do
+while getopts "h?t:v:p:r:u:s:fxlLCcd2" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 [-f] [-x] [-c] [-C] [-L] [-t <token>] [-d] [-v <vo>] [-p <url>] [-u <url>] [-s <url>] URL"
+            echo "$0 [-f] [-x] [-c] [-C] [-L] [-2] [-t <token>] [-d] [-v <vo>] [-p <url>] [-u <url>] [-s <url>] URL"
             echo
             echo "  -f         Do not stop on first error"
             echo "  -x         Run additional tests"
@@ -575,6 +575,7 @@ while getopts "h?t:v:p:r:u:s:fxlLCcd" opt; do
             echo "  -C         Enable colour output"
             echo "  -l         Disable location-trusted work-around"
             echo "  -L         Enable location-trusted work-around"
+            echo "  -2         Force client not to use TLS v1.3 as work-around"
             echo "  -t <token> Use <token> for non-X.509 authn to target"
             echo "  -d         Include additional logging"
             echo "  -v <vo>    Test as member of VO <vo>"
@@ -649,6 +650,10 @@ while getopts "h?t:v:p:r:u:s:fxlLCcd" opt; do
             ;;
         s)
             sciTokenServer=$OPTARG
+            ;;
+        2)
+            TLS_SETTINGS="$TLS_SETTINGS --tls-max 1.2"
+            ;;
     esac
 done
 
@@ -736,7 +741,7 @@ COPY_OUTPUT=$(mktemp)
 FILES_TO_DELETE="$VERBOSE $COPY_OUTPUT $HEADERS"
 trap cleanup EXIT
 
-CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L \$CURL_ADDRESS_SELECTION $CURL_EXTRA_OPTIONS"
+CURL_BASE="curl --verbose --connect-timeout $CONNECT_TIMEOUT -D $HEADERS -s -f -L \$CURL_ADDRESS_SELECTION $TLS_SETTINGS $CURL_EXTRA_OPTIONS"
 CURL_TRUST_IGTF="$CURL_BASE --capath $TRUST_STORE"
 CURL_TRUST_IGTF="$CURL_TRUST_IGTF -H 'X-No-Delegate: true'"  # Tell DPM not to request GridSite delegation.
 CURL_TRUST_IGTF="$CURL_TRUST_IGTF $CURL_RDR_TRUST"        # SLAC xrootd redirects, expecting re-authentication.
