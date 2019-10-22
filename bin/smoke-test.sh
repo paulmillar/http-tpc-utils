@@ -379,8 +379,14 @@ curlRcMessage() {
         90)
             echo "SSL public key does not matched pinned public key."
             ;;
+        91)
+            echo "Invalid SSL certificate status."
+            ;;
+        92)
+            echo "Stream error in HTTP/2 framing layer."
+            ;;
         *)
-            echo "Unknown code: $lastTestFailed"
+            echo "Unknown code: $lastTestFailed."
     esac
 }
 
