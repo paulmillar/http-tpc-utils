@@ -653,6 +653,7 @@ while getopts "h?t:v:p:r:u:s:fxlLCcd2" opt; do
             ;;
         2)
             TLS_SETTINGS="$TLS_SETTINGS --tls-max 1.2"
+            workarounds="${workarounds}2"
             ;;
     esac
 done
