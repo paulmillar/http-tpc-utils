@@ -164,6 +164,10 @@ runTests() {
             options="$options -L"
         fi
 
+        if [[ "$workarounds" == *2* ]]; then
+            options="$options -2"
+        fi
+
         COUNT=$(( $COUNT + 1 ))
 
         if isEndpointToBeSkipped $name $url; then
