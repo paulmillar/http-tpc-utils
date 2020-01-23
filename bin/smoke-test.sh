@@ -390,9 +390,14 @@ curlRcMessage() {
     esac
 }
 
-checkResult() {
+checkCurlResult() {
     lastTestFailed=$?
-    if [ $lastTestFailed -eq 0 ]; then
+    checkResult "$@"
+}
+
+checkResult() {
+    local rc=$?
+    if [ $rc -eq 0 ]; then
         success
     else
         fail "$1"
@@ -401,7 +406,7 @@ checkResult() {
     shift
 
     for var in "$@"; do
-        eval $var=$lastTestFailed
+        eval $var=$rc
     done
 }
 
@@ -826,13 +831,13 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
 
     echo -n "Uploading to target with X.509 authn: "
     doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Upload failed" uploadFailed
+    checkCurlResult "Upload failed" uploadFailed
     [ $uploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
 
     echo -n "Downloading from target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
         doCurl $CURL_X509 $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult "Download failed"
+        checkCurlResult "Download failed"
     else
         skipped "upload failed"
     fi
@@ -874,7 +879,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     echo -n "Deleting target with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
         doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult "Delete failed"
+        checkCurlResult "Delete failed"
     else
         skipped "upload failed"
     fi
@@ -898,7 +903,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     echo -n "Uploading to target with $tokenType authz: "
     if [ $tokenFailed -eq 0 ]; then
         doCurl $CURL_TOKEN $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult "Upload failed" uploadFailed
+        checkCurlResult "Upload failed" uploadFailed
         [ $uploadFailed -ne 0 ] && eval $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     else
         skipped "no $tokenType"
@@ -911,7 +916,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         skipped "upload failed"
     else
         doCurl $CURL_TOKEN $MUST_MAKE_PROGRESS -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult "Download failed"
+        checkCurlResult "Download failed"
     fi
 
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with macaroon authz: "
@@ -931,7 +936,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         skipped "upload failed"
     else
         doCurl $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL  2>$VERBOSE
-        checkResult "Delete failed"
+        checkCurlResult "Delete failed"
     fi
 
 done
@@ -950,7 +955,7 @@ if [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
     doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Delete failed"
+    checkCurlResult "Delete failed"
 fi
 
 echo -n "Initiating an unauthenticated HTTP PULL, authz with $tokenType to target"
@@ -968,7 +973,7 @@ elif [ $lastTestFailed -ne 0 ]; then
     skipped "upload failed"
 else
     doCurl $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
-    checkResult "Delete failed"
+    checkCurlResult "Delete failed"
 fi
 
 if [ "$THIRDPARTY_PRIVATE_URL" != "" ]; then
@@ -990,7 +995,7 @@ if [ "$THIRDPARTY_PRIVATE_URL" != "" ]; then
         skipped "third-party transfer failed"
     else
         doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult
+        checkCurlResult
     fi
 
     echo -n "Initiating a macaroon authz HTTP PULL, authz with $tokenType to target"
@@ -1013,7 +1018,7 @@ if [ "$THIRDPARTY_PRIVATE_URL" != "" ]; then
         skipped "third-party transfer failed"
     else
         doCurl $CURL_TOKEN -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult
+        checkCurlResult
     fi
 fi
 
@@ -1035,7 +1040,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
         skipped "no third-party macaroon"
     else
         doCurl $CURL_X509 $MUST_MAKE_PROGRESS -T /bin/bash -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult "Upload failed" sourceUploadFailed
+        checkCurlResult "Upload failed" sourceUploadFailed
         [ $sourceUploadFailed -ne 0 ] && eval $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>/dev/null # Clear any stale state
     fi
 
@@ -1059,7 +1064,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
         skipped "push failed"
     else
         doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
-        checkResult "delete failed"
+        checkCurlResult "delete failed"
     fi
 
     echo -n "Initiating a macaroon authz HTTP PUSH, authz with $tokenType to target"
@@ -1087,7 +1092,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
         skipped "push failed"
     else
         doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
-        checkResult "delete failed"
+        checkCurlResult "delete failed"
     fi
 
     echo -n "Deleting target with X.509: "
@@ -1097,7 +1102,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
         skipped "source upload failed"
     else
         doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $FILE_URL 2>$VERBOSE
-        checkResult "delete failed"
+        checkCurlResult "delete failed"
     fi
 fi
 
