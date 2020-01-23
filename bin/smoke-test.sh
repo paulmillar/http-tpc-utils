@@ -845,7 +845,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
     echo -n "Obtaining ADLER32 checksum via RFC 3230 HEAD request with X.509 authn: "
     if [ $uploadFailed -eq 0 ]; then
         doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-        checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+        checkHeader "HEAD request failed" '^Digest: *adler32' "No Digest header"
     else
         skipped "upload failed"
     fi
@@ -856,7 +856,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
             skipped "upload failed"
         else
             doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-            checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+            checkHeader "HEAD request failed" '^Digest: *\(adler32\|md5\)' "No Digest header"
         fi
 
         echo -n "Obtaining ADLER32 checksum via RFC 3230 GET request with X.509 authn: "
@@ -864,7 +864,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
             skipped "upload failed"
         else
             doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-            checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+            checkHeader "HEAD request failed" '^Digest: *adler32' "No Digest header"
         fi
 
         echo -n "Obtaining ADLER32 or MD5 checksum via RFC 3230 GET request with X.509 authn: "
@@ -872,7 +872,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
             skipped "upload failed"
         else
             doCurl $CURL_X509 $ENFORCE_DIGEST_TIMEOUT -H \"Want-Digest: adler32,md5\" -o/dev/null $FILE_URL 2>$VERBOSE
-            checkHeader "HEAD request failed" '^Digest: \(adler32\|md5\)' "No Digest header"
+            checkHeader "HEAD request failed" '^Digest: *\(adler32\|md5\)' "No Digest header"
         fi
     fi
 
@@ -926,7 +926,7 @@ for IP_ADDRESS in $ALL_IP_ADDRESSES; do
         skipped "upload failed"
     else
         doCurl $CURL_TOKEN $ENFORCE_DIGEST_TIMEOUT -I -H \"Want-Digest: adler32\" -o/dev/null $FILE_URL 2>$VERBOSE
-        checkHeader "HEAD request failed" '^Digest: adler32' "No Digest header"
+        checkHeader "HEAD request failed" '^Digest: *adler32' "No Digest header"
     fi
 
     echo -n "Deleting target with $tokenType authz: "
