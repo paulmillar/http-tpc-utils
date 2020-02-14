@@ -30,6 +30,8 @@ PURDUE         xrootd-D/HDFS   -  https://cms-c000.rcac.purdue.edu:1094/VO/dteam
 PURDUE2        xrootd-R/HDFS   -  https://xrootd.rcac.purdue.edu:1094/VO/dteam
 SARA           dCache          2  https://webdav.grid.surfsara.nl:2882/pnfs/grid.sara.nl/data/dteam/DOMA-TPC
 SARA-test      dCache          -  https://dolphin12.grid.surfsara.nl:2882/groups/dteam/DOMA-TPC
+SLAC           xrootd-D        -  https://osggridftp01.slac.stanford.edu:2094/xrootd/atlas/tpctest
+SLAC2          xrootd-R        -  https://griddev03.slac.stanford.edu:2094/xrootd/atlas/tpctest
 TOKYO-LCG2     DPM             -  https://lcg-se01.icepp.jp:18443/dpm/icepp.jp/home/dteam
 TRIUMF-DYNAFED DynaFed/S3      -  https://atlas-fed-fe1.triumf.ca/dynafed/doma/
 TRIUMF-PPS     dCache          -  https://ppshead.lcg.triumf.ca:2880/dteam
