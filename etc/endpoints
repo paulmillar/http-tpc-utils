@@ -36,6 +36,7 @@ TOKYO-LCG2     DPM             -  https://lcg-se01.icepp.jp:18443/dpm/icepp.jp/h
 TRIUMF-DYNAFED DynaFed/S3      -  https://atlas-fed-fe1.triumf.ca/dynafed/doma/
 TRIUMF-PPS     dCache          -  https://ppshead.lcg.triumf.ca:2880/dteam
 TRIUMF-PROD    dCache          -  https://webdav.lcg.triumf.ca:2880/dteam
+UCSD           xrootd-R        -  https://redirector.t2.ucsd.edu:1094//store/user/ddavila
 UKI-BRUNEL     DPM             -  https://dc2-grid-64.brunel.ac.uk/dpm/brunel.ac.uk/home/dteam/wlcg-tpc
 UKI-GLASGOW    DPM             -  https://svr018.gla.scotgrid.ac.uk/dpm/gla.scotgrid.ac.uk/home/dteam
 UKI-IC         dCache          -  https://gfe02.grid.hep.ph.ic.ac.uk:2880/pnfs/hep.ph.ic.ac.uk/data/dteam/wlcg-tpc
