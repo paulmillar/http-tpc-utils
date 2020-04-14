@@ -490,8 +490,16 @@ runCopy() {
 #  endpoint's score.
 requestRemoteMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable for result
     NON_SUT_TEST=1
+
+    ## As a workaround for https://github.com/dCache/dcache/issues/5213
+    ## we distable TLS v1.3 when requesting a macaroon from the "golden"
+    ## endpoint.
+    ##
+    MACAROON_EXTRA_OPTIONS="--tls-max 1.2"
+
     requestMacaroon "$1" "$2" "$3" "$4"
     unset NON_SUT_TEST
+    unset MACAROON_EXTRA_OPTIONS
 }
 
 requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable for result
@@ -502,7 +510,7 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable 
 
     lastTestFailed=0
 
-    doCurl $CURL_X509 -m$MACAROON_TIMEOUT -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
+    doCurl $CURL_X509 -m$MACAROON_TIMEOUT $MACAROON_EXTRA_OPTIONS -X POST -H \'Content-Type: application/macaroon-request\' -d \'{\"caveats\": [\"activity:$1\"], \"validity\": \"PT30M\"}\' -o$macaroon_json $2 2>$VERBOSE
     checkFailure "Macaroon request failed." $4
     if [ $lastTestFailed -eq 0 ]; then
         jq -r .macaroon $macaroon_json >$target_macaroon
