@@ -13,7 +13,7 @@ CERN-TRUNK     DPM             -  https://dpmhead-trunk.cern.ch/dpm/cern.ch/home
 DESY-PROM      dCache          2  https://prometheus.desy.de:2443/VOs/dteam
 DESY-DOMA      dCache          -  https://dcache-se-doma.desy.de:2880/dteam
 FLORIDA        xrootd-R/Lustre -  https://cmsio5.rc.ufl.edu:1094/store/user/dteam
-FNAL           dCache          -  https://stkendca06a.fnal.gov:2880/pnfs/fnal.gov/VOs/dteam
+FNAL           dCache          2  https://stkendca06a.fnal.gov:2880/pnfs/fnal.gov/VOs/dteam
 FNAL-CMST1     dCache          -  https://cmsdcadisk.fnal.gov:2880/dcache/dteam
 IN2P3          dCache          -  https://ccdcatli302.in2p3.fr:2880/dteam
 IN2P3-TEST     dCache          -  https://ccdcalitest12.in2p3.fr:2880/
