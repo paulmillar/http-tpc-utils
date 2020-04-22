@@ -392,6 +392,7 @@ curlRcMessage() {
 
 checkCurlResult() {
     lastTestFailed=$?
+    (exit $lastTestFailed)
     checkResult "$@"
 }
 
