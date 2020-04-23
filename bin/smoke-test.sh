@@ -31,6 +31,12 @@ DIGEST_TIMEOUT=180  # value in seconds
 ##
 DELETE_TIMEOUT=30   # value in seconds
 
+## As a workaround for https://github.com/dCache/dcache/issues/5213
+## we distable TLS v1.3 when requesting a macaroon from the "golden"
+## endpoint (prometheus.desy.de)
+##
+GOLDEN_ENDPOINT_EXTRA_OPTIONS="--tls-max 1.2"
+
 THIRDPARTY_UNAUTHENTICATED_URL=https://prometheus.desy.de:2443/Video/BlenderFoundation/Sintel.webm
 
 DTEAM_THIRDPARTY_PRIVATE_URL=https://prometheus.desy.de:2443/VOs/dteam/private-file
@@ -492,11 +498,7 @@ runCopy() {
 requestRemoteMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable for result
     NON_SUT_TEST=1
 
-    ## As a workaround for https://github.com/dCache/dcache/issues/5213
-    ## we distable TLS v1.3 when requesting a macaroon from the "golden"
-    ## endpoint.
-    ##
-    MACAROON_EXTRA_OPTIONS="--tls-max 1.2"
+    MACAROON_EXTRA_OPTIONS="$GOLDEN_ENDPOINT_EXTRA_OPTIONS"
 
     requestMacaroon "$1" "$2" "$3" "$4"
     unset NON_SUT_TEST
@@ -1072,7 +1074,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
     elif [ $lastTestFailed -ne 0 ]; then
         skipped "push failed"
     else
-        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT $GOLDEN_ENDPOINT_EXTRA_OPTIONS -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
         checkCurlResult "delete failed"
     fi
 
@@ -1100,7 +1102,7 @@ if [ "$THIRDPARTY_UPLOAD_BASE_URL" != "" ]; then
     elif [ $lastTestFailed -ne 0 ]; then
         skipped "push failed"
     else
-        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
+        doCurl $CURL_X509 -X DELETE -m$DELETE_TIMEOUT $GOLDEN_ENDPOINT_EXTRA_OPTIONS -o/dev/null $THIRDPARTY_UPLOAD_URL 2>$VERBOSE
         checkCurlResult "delete failed"
     fi
 
