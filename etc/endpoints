@@ -6,7 +6,7 @@ BRUSSELS       dCache          -  https://maite.iihe.ac.be:2880/pnfs/iihe/dteam
 CA-IAAS        DynaFed         -  https://dynafed02.heprc.uvic.ca:8443/tpc/
 CALTECH        xrootd-D/HDFS   -  https://transfer-2.ultralight.org:1094/store/user/dteam
 CALTECH2       xrootd-R/HDFS   -  https://transfer-1.ultralight.org:1094/store/user/dteam
-CERN           EOS             -  https://eospps.cern.ch:9000/eos/opstest/tpc/root/domatest
+CERN           EOS             -  https://eospps.cern.ch/eos/opstest/tpc/root/domatest
 CERN-DYN-S3    DynaFed/S3      -  https://dynafed-atlas.cern.ch:443/data/dteam/s3
 CERN-RC        DPM             -  https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 CERN-TRUNK     DPM             -  https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
