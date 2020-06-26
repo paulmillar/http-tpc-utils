@@ -8,7 +8,6 @@ CALTECH        xrootd-D/HDFS   -  https://transfer-2.ultralight.org:1094/store/u
 CALTECH2       xrootd-R/HDFS   -  https://transfer-1.ultralight.org:1094/store/user/dteam
 CERN           EOS             -  https://eospps.cern.ch/eos/opstest/tpc/root/domatest
 CERN-DYN-S3    DynaFed/S3      -  https://dynafed-atlas.cern.ch:443/data/dteam/s3
-CERN-RC        DPM             -  https://dpmhead-rc.cern.ch/dpm/cern.ch/home/dteam
 CERN-TRUNK     DPM             -  https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
 DESY-PROM      dCache          2  https://prometheus.desy.de:2443/VOs/dteam
 DESY-DOMA      dCache          -  https://dcache-se-doma.desy.de:2880/dteam
