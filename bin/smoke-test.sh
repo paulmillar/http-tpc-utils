@@ -529,10 +529,19 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable 
 }
 
 requestWlcgToken() { # $1 oidc-agent account name, $2 audience, $3 variable for token, $4 token for result.
+    # Fallback to failing unless we specify otherwise.
+    eval $4=1
+    lastTestFailed=0
+
     echo -n "Requesting token from account $1 for audience $2: "
 
     token=$(oidc-token $1 --aud $2)
-    checkFailure "Token request failed" $4
+    eval $3="$token"
+    if [ -z "$token" ]; then
+        fail "Token request failed"
+        eval $4=3
+        return
+    fi
 
     local body=$(echo -n $token | tr '.' ' ' | awk '{print $2;}' | base64 --decode 2>/dev/null)
     debug "Returned token body is $body"
@@ -540,12 +549,11 @@ requestWlcgToken() { # $1 oidc-agent account name, $2 audience, $3 variable for 
     if [ "$audience" != "$2" ]; then
         fail "Issuer returned incorrect audience (desired $2; returned $audience)"
         eval $4=2
+        return
     fi
 
-    success
-
-    eval $3="$token"
     eval $4=0
+    success
 }
 
 requestSciToken() { # $1 Scopes, $2 Issuer URL, $3 variable for token, $4 variable for result
