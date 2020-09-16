@@ -58,7 +58,7 @@ extended=0
 tokenType=macaroon
 workarounds=""
 debugOutput=0
-vo=dteam
+vo=${SMOKE_TEST_VO:-dteam}
 
 withColour() {
     RESET="\x1B[0m"
