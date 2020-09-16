@@ -528,6 +528,26 @@ requestMacaroon() { # $1 Caveats, $2 URL, $3 variable for macaroon, $4 variable 
     eval $3="$macaroon"
 }
 
+requestWlcgToken() { # $1 oidc-agent account name, $2 audience, $3 variable for token, $4 token for result.
+    echo -n "Requesting token from account $1 for audience $2: "
+
+    token=$(oidc-token $1 --aud $2)
+    checkFailure "Token request failed" $4
+
+    local body=$(echo -n $token | tr '.' ' ' | awk '{print $2;}' | base64 --decode 2>/dev/null)
+    debug "Returned token body is $body"
+    audience="$(echo -n $body | jq -r .aud )"
+    if [ "$audience" != "$2" ]; then
+        fail "Issuer returned incorrect audience (desired $2; returned $audience)"
+        eval $4=2
+    fi
+
+    success
+
+    eval $3="$token"
+    eval $4=0
+}
+
 requestSciToken() { # $1 Scopes, $2 Issuer URL, $3 variable for token, $4 variable for result
     local target_scitoken=$(mktemp)
     local scitoken_json=$(mktemp)
@@ -580,7 +600,7 @@ done
 # Check if stdout is sent to a terminal, or redirect to a file.
 if [ -t 1 ] ; then withColour; else withoutColour; fi
 
-while getopts "h?t:v:p:r:u:s:fxlLCcd2" opt; do
+while getopts "h?t:v:o:p:r:u:s:fxlLCcd2" opt; do
     case "$opt" in
         h|\?)
             echo "$0 [-f] [-x] [-c] [-C] [-L] [-2] [-t <token>] [-d] [-v <vo>] [-p <url>] [-u <url>] [-s <url>] URL"
@@ -592,13 +612,14 @@ while getopts "h?t:v:p:r:u:s:fxlLCcd2" opt; do
             echo "  -l         Disable location-trusted work-around"
             echo "  -L         Enable location-trusted work-around"
             echo "  -2         Force client not to use TLS v1.3 as work-around"
-            echo "  -t <token> Use <token> for non-X.509 authn to target"
+            echo "  -t <token> Use <token> for non-X.509 authn to target (valid values: macaroon, scitoken, wlcg)"
             echo "  -d         Include additional logging"
             echo "  -v <vo>    Test as member of VO <vo>"
             echo "  -p <url>   Use <url> as the public link for TPC PULL"
             echo "  -r <url>   Use <url> as the VO-private link for TPC PULL"
             echo "  -u <url>   Use <url> as the base for HTTP PUSH"
             echo "  -s <url>   SciToken server"
+            echo "  -o <name>  oidc-agent account name (for use with wlcg tokens)"
             echo
             echo "Defaults:"
             echo "  -p $THIRDPARTY_UNAUTHENTICATED_URL"
@@ -644,8 +665,11 @@ while getopts "h?t:v:p:r:u:s:fxlLCcd2" opt; do
                 scitoken)
                     tokenType=SciToken
                     ;;
+                wlcg)
+                    tokenType=WlcgToken
+                    ;;
                 *)
-                    fatal "Unknown token type \"$OPTARG\". Must be one of \"macaroon\" or \"scitoken\""
+                    fatal "Unknown token type \"$OPTARG\". Must be one of \"macaroon\", \"wlcg\", or \"scitoken\""
                     ;;
             esac
             ;;
@@ -654,6 +678,9 @@ while getopts "h?t:v:p:r:u:s:fxlLCcd2" opt; do
             ;;
         v)
             vo=$OPTARG
+            ;;
+        o)
+            OIDC_AGENT_ACCOUNT=$OPTARG
             ;;
         p)
             THIRDPARTY_UNAUTHENTICATED_URL=$OPTARG
@@ -808,6 +835,8 @@ if [ $CURL_HAS_CONNECT_TO -eq 0 ]; then
     echo "WARNING: curl does not support --connect-to; not specifying an IP address"
     IP_ADDRESS_COUNT=1
     ALL_IP_ADDRESSES=$(echo "$ALL_IP_ADDRESSES" | awk '{print $1;}')
+    echo "WARNING: curl does not support --tls-max; not using"
+    GOLDEN_ENDPOINT_EXTRA_OPTIONS=""
 fi
 
 
@@ -815,6 +844,12 @@ case $tokenType in
     SciToken)
         NON_SUT_TEST=1
         requestSciToken "" $sciTokenServer TARGET_TOKEN tokenFailed
+        unset NON_SUT_TEST
+        ;;
+
+    WlcgToken)
+        NON_SUT_TEST=1
+        requestWlcgToken "$OIDC_AGENT_ACCOUNT" "https://$HOST_PORT" TARGET_TOKEN tokenFailed
         unset NON_SUT_TEST
         ;;
 
