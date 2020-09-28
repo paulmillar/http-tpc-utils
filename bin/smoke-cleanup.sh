@@ -2,9 +2,27 @@
 
 SHARE=$(cd $(dirname $0)/../share;pwd)
 
+RESET="\x1B[0m"
+DIM="\x1B[2m"
+GREEN="\x1B[32m"
+RED="\x1B[31m"
+YELLOW="\x1B[33m"
+
 fatal() {
-    echo "$@"
+    echo -e "$RED$@$RESET"
     exit 1
+}
+
+log() {
+    echo -e "$DIM$@$RESET"
+}
+
+activity() {
+    echo -e "$YELLOW$@$RESET"
+}
+
+success() {
+    echo -e "$GREEN$@$RESET"
 }
 
 if [ $# -ne 1 ]; then
@@ -25,15 +43,32 @@ curl -s -E /tmp/x509up_u1000 --capath /etc/grid-security/certificates -X PROPFIN
 <?xml version="1.0"?>
 <a:propfind xmlns:a="DAV:"><a:prop><a:getlastmodified/><a:creationdate/><a:resourcetype/></a:prop></a:propfind>
 EOF
-[ $? -ne 0 ] && fatal "PROPFIND failed"
+rc=$?
+[ $rc -ne 0 ] && fatal "PROPFIND $URL failed (rc=$rc)"
 
-FILES=$(xsltproc --stringparam path $URL_PATH $SHARE/list-files.xsl $TMP_FILE | grep smoke-test)
-rm $TMP_FILE
+xmllint --noout $TMP_FILE || fatal "PROPFIND $URL returned invalid XML"
 
-if [ $? -eq 0 ]; then
-    for file in $FILES; do
-	FILE_URL=$URL/$file
-	echo Removing $FILE_URL
-	curl -s -E /tmp/x509up_u1000 --capath /etc/grid-security/certificates -X DELETE $FILE_URL
-    done
+FILES=$(xsltproc --stringparam path $URL_PATH $SHARE/list-files.xsl $TMP_FILE)
+rc=$?
+
+rm -f $TMP_FILE
+
+[ $rc != 0 ] && fatal "PROPFIND $URL returned XML that xsltproc failed to parse (rc=$rc)"
+
+count=0
+for file in $FILES; do
+    case $file in
+	smoke-test*)
+	    FILE_URL=$URL/$file
+	    activity Removing $FILE_URL
+	    curl -s -E /tmp/x509up_u1000 --capath /etc/grid-security/certificates -X DELETE $FILE_URL
+	    count=$(( $count + 1 ))
+	    ;;
+    esac
+done
+
+if [ $count = 0 ]; then
+    log "No smoke-test files under $URL"
+else
+    success "Removed $count files under $URL"
 fi
