@@ -1,4 +1,4 @@
-AGLT2          dCache          -  https://head01.aglt2.org:2880/pnfs/aglt2.org/dteam
+AGLT2          dCache          2  https://head01.aglt2.org:2880/pnfs/aglt2.org/dteam
 BEIJING        DPM             -  https://ccsrm.ihep.ac.cn/dpm/ihep.ac.cn/home/dteam
 BEIJING-TEST   DPM             -  https://dpmtest.ihep.ac.cn/dpm/ihep.ac.cn/home/dteam
 BNL            dCache          2  https://dcgftp.usatlas.bnl.gov:2881/pnfs/usatlas.bnl.gov/BNLT0D1/SAM
