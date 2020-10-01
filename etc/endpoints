@@ -34,7 +34,6 @@ SLAC           xrootd-D/xrootd -  https://osggridftp01.slac.stanford.edu:2094/xr
 SLAC2          xrootd-R/xrootd -  https://griddev03.slac.stanford.edu:2094/xrootd/atlas/tpctest
 TAIWAN-LCG2    DPM             -  https://f-dpm000.grid.sinica.edu.tw/dpm/grid.sinica.edu.tw/home/dteam
 TOKYO-LCG2     DPM             -  https://lcg-se01.icepp.jp:18443/dpm/icepp.jp/home/dteam
-TRIUMF-DYNAFED DynaFed/S3      -  https://atlas-fed-fe1.triumf.ca/dynafed/doma/
 TRIUMF-PPS     dCache          -  https://ppshead.lcg.triumf.ca:2880/dteam
 TRIUMF-PROD    dCache          -  https://webdav.lcg.triumf.ca:2880/dteam
 UCSD           xrootd-R/HDFS   -  https://redirector.t2.ucsd.edu:1094//store/user/dteam
