@@ -30,7 +30,8 @@ ENDPOINTS=$BASE/etc/endpoints
 
 OUTPUT_DESCRIPTION="stdout"
 QUIET=0
-while getopts "h?e:s:m:xo:p:qS:" opt; do
+VO="dteam"
+while getopts "h?e:s:m:xo:p:qv:S:" opt; do
     case "$opt" in
         h|\?)
             echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>] [-S <file>] [-o <name>]"
@@ -41,6 +42,7 @@ while getopts "h?e:s:m:xo:p:qS:" opt; do
             echo "    -x           use extended tests, if supported"
             echo "    -p <file>    use <file> for persistent state"
             echo "    -q           limit output to errors and prompts"
+            echo "    -v <VO>      specify the VO to use for the tests"
             echo "    -S <file>    skip endpoints listed in <file>"
             echo "    -o <name>    use token auth from oidc-agent account <name>"
             exit 0
@@ -66,6 +68,9 @@ while getopts "h?e:s:m:xo:p:qS:" opt; do
             ;;
         q)
             QUIET=1
+            ;;
+        v)
+            VO="$OPTARG"
             ;;
         S)
             MANUAL_SKIP_FILE="$OPTARG"
@@ -171,6 +176,10 @@ runTests() {
 
         if [ ! -z "$OIDC_AGENT_ACCOUNT" ]; then
             options="$options -t wlcg -o $OIDC_AGENT_ACCOUNT"
+        fi
+
+        if [ ! -z "$VO" ]; then
+            options="$options -v $VO"
         fi
 
         if [[ "$workarounds" == *L* ]]; then
@@ -388,7 +397,7 @@ sendEmail() { # $1 - email address, $2 - subject
 
 voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info -e -hours 1 >/dev/null 2>&1 || fatal "X.509 proxy expires too soon"
-voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
+voms-proxy-info --acexists $VO 2>/dev/null || fatal "X.509 proxy does not assert $VO membership"
 
 loadManualSkipped
 downloadGocDbDowntimeInfo
