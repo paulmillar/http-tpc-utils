@@ -8,7 +8,7 @@ CONNECT_TIMEOUT=60  # value in seconds
 ## Drop transfer if average bandwidth over SPEED_TIME is less than
 ## SPEED_LIMIT.
 ##
-SPEED_TIME=15       # value in seconds
+SPEED_TIME=60       # value in seconds
 SPEED_LIMIT=1024    # value in bytes per second
 
 ## Total time allowed for a macaroon request to complete.
