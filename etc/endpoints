@@ -10,7 +10,7 @@ CERN           EOS             -  https://eospps.cern.ch/eos/opstest/tpc/root/do
 CERN-DYN-S3    DynaFed/S3      -  https://dynafed-atlas.cern.ch:443/data/dteam/s3
 CERN-TRUNK     DPM             -  https://dpmhead-trunk.cern.ch/dpm/cern.ch/home/dteam
 DESY-PROM      dCache          2  https://prometheus.desy.de:2443/VOs/dteam
-DESY-DOMA      dCache          -  https://dcache-se-doma.desy.de:2880/dteam
+DESY-DOMA      dCache          2  https://dcache-se-doma.desy.de:2880/dteam
 FLORIDA        xrootd-R/Lustre -  https://cmsio5.rc.ufl.edu:1094/store/user/dteam
 FNAL           dCache          2  https://stkendca06a.fnal.gov:2880/pnfs/fnal.gov/VOs/dteam
 FNAL-CMST1     dCache          -  https://cmsdcadisk.fnal.gov:2880/dcache/dteam
