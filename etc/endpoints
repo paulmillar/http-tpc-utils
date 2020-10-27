@@ -45,7 +45,8 @@ UKI-MAN        DPM             -  https://vm33.in.tier2.hep.manchester.ac.uk/dpm
 UKI-MAN-PROD   DPM             -  https://bohr3226.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
 UKI-QMUL-DEV   StoRM           -  https://se01.esc.qmul.ac.uk:8443/dteam
 UKI-QMUL-PROD  StoRM           -  https://se03.esc.qmul.ac.uk:8443/dteam
-UKI-RAL        DynaFed/ECHO    -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
+UKI-RAL-DYNAFED DynaFed/ECHO   -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
+UKI-RAL-XROOTD xrootd-D/ECHO   -  https://ceph-test-gw683.gridpp.rl.ac.uk:1094/dteam:test
 UNI-BONN       xrootd-R/CephFS -  https://xrootd.physik.uni-bonn.de:1094/cephfs/grid/dteam
 UVIC-DYNAFED   DynaFed/MinIO   -  https://dynafed-atlas.heprc.uvic.ca/dynafed/dteam/s3
 VANDERBILT     xrootd-D/LStore -  https://seb.accre.vanderbilt.edu:1094/store/user/dteam
