@@ -14,7 +14,7 @@ DESY-DOMA      dCache          2  https://dcache-se-doma.desy.de:2880/dteam
 FLORIDA        xrootd-R/Lustre -  https://cmsio5.rc.ufl.edu:1094/store/user/dteam
 FNAL           dCache          2  https://stkendca06a.fnal.gov:2880/pnfs/fnal.gov/VOs/dteam
 FNAL-CMST1     dCache          -  https://cmsdcadisk.fnal.gov:2880/dcache/dteam
-GLASGOW        xrootd-D/Ceph   -  https://cephc02.gla.scotgrid.ac.uk:1096/dteam:
+UKI-GLASGOW    xrootd-D/Ceph   -  https://cephc02.gla.scotgrid.ac.uk:1096/dteam:
 IN2P3          dCache          2  https://ccdcatli302.in2p3.fr:2880/dteam
 IN2P3-TEST     dCache          2  https://ccdcalitest12.in2p3.fr:2880/
 INFN-T1        StoRM           2  https://xfer.cr.cnaf.infn.it:8443/dteam
