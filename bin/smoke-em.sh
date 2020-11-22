@@ -99,6 +99,12 @@ downloadGocDbDowntimeInfo() {
     curl -s -k 'https://goc.egi.eu/gocdbpi/public/?method=get_downtime&ongoing_only=yes' > $GOCDB_DOWNTIME_XML
 }
 
+downloadOsgDowntimeInfo() {
+    OSG_DOWNTIME_XML=$(mktemp)
+    FILES_TO_DELETE="$FILES_TO_DELETE $OSG_DOWNTIME_XML"
+    curl -s -k 'https://topology.opensciencegrid.org/rgdowntime/xml' > $OSG_DOWNTIME_XML
+}
+
 readPersistentState() {
     local OLD_IFS
     OLD_IFS="$IFS"
@@ -130,6 +136,24 @@ isEndpointInGocdbDowntime() { # $1 - fully qualified domain name
     return $rc
 }
 
+isEndpointInOsgDowntime() { # $1 - fully qualified domain name
+    local fqdn="$1"
+    local rc
+    local description
+
+    description=$(xmllint --xpath "/Downtimes/CurrentDowntimes/Downtime[Severity='Outage'][ResourceFQDN='$fqdn'][1]/Description/text()" $OSG_DOWNTIME_XML 2>/dev/null)
+    rc=$?
+
+    if [ $rc -eq 0 ]; then
+	if [ ${#description} -gt 50 ]; then
+	    SKIP_REASON="${description:0:50}..."
+	else
+	    SKIP_REASON="$description"
+	fi
+    fi
+
+    return $rc
+}
 
 isEndpointInManualSkipList() { # $1 - name
     local name="$1"
@@ -152,6 +176,7 @@ isEndpointToBeSkipped() { # $1 - name, $2 - endpoint
 
     isEndpointInManualSkipList "$name" && return 0
     isEndpointInGocdbDowntime "$fqdn" && return 0
+    isEndpointInOsgDowntime "$fqdn" && return 0
     return 1
 }
 
@@ -397,6 +422,7 @@ voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not asse
 
 loadManualSkipped
 downloadGocDbDowntimeInfo
+downloadOsgDowntimeInfo
 
 [ -f "$persistentState" ] && readPersistentState
 
