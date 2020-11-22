@@ -94,9 +94,9 @@ loadManualSkipped() {
 }
 
 downloadGocDbDowntimeInfo() {
-    DOWNTIME_XML=$(mktemp)
-    FILES_TO_DELETE="$FILES_TO_DELETE $DOWNTIME_XML"
-    curl -s -k 'https://goc.egi.eu/gocdbpi/public/?method=get_downtime&ongoing_only=yes' > $DOWNTIME_XML
+    GOCDB_DOWNTIME_XML=$(mktemp)
+    FILES_TO_DELETE="$FILES_TO_DELETE $GOCDB_DOWNTIME_XML"
+    curl -s -k 'https://goc.egi.eu/gocdbpi/public/?method=get_downtime&ongoing_only=yes' > $GOCDB_DOWNTIME_XML
 }
 
 readPersistentState() {
@@ -116,25 +116,43 @@ writePersistentState() {
 } > $persistentState
 
 
+isEndpointInGocdbDowntime() { # $1 - fully qualified domain name
+    local fqdn="$1"
+    local rc
+
+    xmllint --xpath "/results/DOWNTIME[HOSTNAME='$fqdn' and SEVERITY='OUTAGE']" $GOCDB_DOWNTIME_XML >/dev/null 2>&1
+    rc=$?
+
+    if [ $rc -eq 0 ]; then
+        SKIP_REASON="GOCDB Downtime: $(xsltproc --stringparam fqdn $fqdn share/downtime-description.xsl $GOCDB_DOWNTIME_XML)"
+    fi
+
+    return $rc
+}
+
+
+isEndpointInManualSkipList() { # $1 - name
+    local name="$1"
+    local rc=1
+
+    if [ -n "${MANUAL_SKIP[$name]}" ]; then
+        SKIP_REASON="${MANUAL_SKIP[$name]}"
+        rc=0
+    fi
+
+    return $rc
+}
+
+
 isEndpointToBeSkipped() { # $1 - name, $2 - endpoint
     local name="$1"
     local without_scheme=${2#https://}
     local host_port=$(echo $without_scheme | cut -d '/' -f1)
     local fqdn=$(echo $host_port | cut -d ':' -f1)
 
-    if [ -n "${MANUAL_SKIP[$name]}" ]; then
-        SKIP_REASON="${MANUAL_SKIP[$name]}"
-        rc=0
-    else
-        xmllint --xpath "/results/DOWNTIME[HOSTNAME='$fqdn' and SEVERITY='OUTAGE']" $DOWNTIME_XML >/dev/null 2>&1
-        rc=$?
-
-        if [ $rc -eq 0 ]; then
-            SKIP_REASON="GOCDB Downtime: $(xsltproc --stringparam fqdn $fqdn share/downtime-description.xsl $DOWNTIME_XML)"
-        fi
-    fi
-
-    return $rc
+    isEndpointInManualSkipList "$name" && return 0
+    isEndpointInGocdbDowntime "$fqdn" && return 0
+    return 1
 }
 
 
