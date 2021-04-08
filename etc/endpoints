@@ -43,7 +43,7 @@ UKI-IC         dCache          -  https://gfe02.grid.hep.ph.ic.ac.uk:2880/pnfs/h
 UKI-LANCS      DPM             -  https://fal-pygrid-30.lancs.ac.uk/dpm/lancs.ac.uk/home/dteam
 UKI-MAN        DPM             -  https://vm33.in.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
 UKI-MAN-PROD   DPM             -  https://bohr3226.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/dteam
-UKI-QMUL-DEV   StoRM           -  https://se01.esc.qmul.ac.uk:8443/dteam
+UKI-QMUL-DEV   StoRM           2  https://se01.esc.qmul.ac.uk:8443/dteam
 UKI-QMUL-PROD  StoRM           -  https://se03.esc.qmul.ac.uk:8443/dteam
 UKI-RAL-DYNAFED DynaFed/ECHO   -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
 UKI-RAL-XROOTD xrootd-D/ECHO   -  https://ceph-test-gw683.gridpp.rl.ac.uk:1094/dteam:test
