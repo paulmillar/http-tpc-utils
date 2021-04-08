@@ -20,7 +20,7 @@ IN2P3-TEST     dCache          2  https://ccdcalitest12.in2p3.fr:2880/
 INFN-T1        StoRM           2  https://xfer.cr.cnaf.infn.it:8443/dteam
 KIT            dCache          2  https://pps-single-webdav-kit.gridka.de:2880/pnfs/gridka.de/tpc/dteam
 LRZ-LMU        dCache          -  https://lcg-lrz-http.grid.lrz.de/pnfs/lrz-muenchen.de/data/dteam/doma-tpc
-MWT2           dCache          -  https://uct2-webdav.mwt2.org:2881/dteam
+MWT2           dCache          2  https://uct2-webdav.mwt2.org:2881/dteam
 NDGF           dCache          2  https://dav.ndgf.org/dteam/tpc
 NDGF-PREPROD   dCache          2  https://preprod-srm.ndgf.org/dteam/tpc
 NEBRASKA       xrootd-D/HDFS   -  https://red-gridftp12.unl.edu:1094/user/dteam
