@@ -51,3 +51,4 @@ UNI-BONN       xrootd-R/CephFS -  https://xrootd.physik.uni-bonn.de:1094/cephfs/
 UVIC-DYNAFED   DynaFed/MinIO   -  https://dynafed-atlas.heprc.uvic.ca/dynafed/dteam/s3
 VANDERBILT     xrootd-D/LStore -  https://seb.accre.vanderbilt.edu:1094/store/user/dteam
 WISCONSIN      xrootd-R/HDFS   -  https://pubxrootd.hep.wisc.edu:1094/osg/vo/dteam
+OSCER          xrootd-D/xrootd -  https://se1.oscer.ou.edu:1094//xrd/dteam
