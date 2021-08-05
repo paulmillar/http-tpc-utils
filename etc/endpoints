@@ -3,8 +3,8 @@ BEIJING        DPM             -  https://ccsrm.ihep.ac.cn/dpm/ihep.ac.cn/home/d
 BEIJING-TEST   DPM             -  https://dpmtest.ihep.ac.cn/dpm/ihep.ac.cn/home/dteam
 BNL            dCache          2  https://dcgftp.usatlas.bnl.gov:2881/pnfs/usatlas.bnl.gov/BNLT0D1/SAM
 BRUSSELS       dCache          -  https://maite.iihe.ac.be:2880/pnfs/iihe/dteam
-BU             xrootd-R/GPFS   -  https://atlas-xrootd.bu.edu/gpfs1/tpctest
-BU-DATA        xrootd-D/GPFS   -  https://atlas-dtn5.bu.edu/gpfs1/tpctest
+BU             xrootd-R/GPFS   -  https://atlas-xrootd.bu.edu:1094/gpfs1/tpctest
+BU-DATA        xrootd-D/GPFS   -  https://atlas-dtn5.bu.edu:1094/gpfs1/tpctest
 CA-IAAS        DynaFed/MinIO   -  https://dynafed02.heprc.uvic.ca:8443/tpc/
 CALTECH        xrootd-D/HDFS   -  https://transfer-2.ultralight.org:1094/store/user/dteam
 CALTECH2       xrootd-R/HDFS   -  https://transfer-1.ultralight.org:1094/store/user/dteam
