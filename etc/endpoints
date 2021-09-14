@@ -51,6 +51,6 @@ UKI-RAL-DYNAFED DynaFed/ECHO   -  https://dynafed.stfc.ac.uk/gridpp/dteam/disk/
 UKI-RAL-XROOTD xrootd-D/ECHO   -  https://ceph-gw8.gridpp.rl.ac.uk:1094/dteam:test
 UNI-BONN       xrootd-R/CephFS -  https://xrootd.physik.uni-bonn.de:1094/cephfs/grid/dteam
 UVIC-DYNAFED   DynaFed/MinIO   -  https://dynafed-atlas.heprc.uvic.ca/dynafed/dteam/s3
-VANDERBILT     xrootd-D/LStore -  https://seb.accre.vanderbilt.edu:1094/store/user/dteam
+VANDERBILT     xrootd-D/LStore -  https://xrootd-vanderbilt.sites.opensciencegrid.org:1094/store/user/dteam
 WISCONSIN      xrootd-R/HDFS   -  https://pubxrootd.hep.wisc.edu:1094/osg/vo/dteam
 OSCER          xrootd-D/xrootd -  https://se1.oscer.ou.edu:1094//xrd/dteam
