@@ -35,6 +35,7 @@ SARA           dCache          2  https://webdav.grid.surfsara.nl:2882/pnfs/grid
 SARA-test      dCache          2  https://dolphin12.grid.surfsara.nl:2882/groups/dteam/DOMA-TPC
 SLAC           xrootd-D/xrootd -  https://osggridftp01.slac.stanford.edu:2094/xrootd/atlas/tpctest
 SLAC2          xrootd-R/xrootd -  https://griddev03.slac.stanford.edu:2094/xrootd/atlas/tpctest
+SWT2_CPB       xrootd-D/xrootd -  https://gk06.atlas-swt2.org:1094/xrd/dteam 
 TAIWAN-LCG2    DPM             -  https://f-dpm000.grid.sinica.edu.tw/dpm/grid.sinica.edu.tw/home/dteam
 TOKYO-LCG2     DPM             -  https://lcg-se01.icepp.jp:18443/dpm/icepp.jp/home/dteam
 TRIUMF-PPS     dCache          2  https://pps05.lcg.triumf.ca:2880/dteam
