@@ -21,7 +21,13 @@ function fail() { #
 [ $# -eq 1 ] || fail "Need filename to plot"
 [ -f "$1" ] || fail "No such file: $1"
 
-target=${1%.*}.svg
-gnuplot -e "infile=\"$1\"" -e "outfile=\"$target\"" share/plot-concurrency.gnu
+svg_target=${1%.*}.svg
+png_target=${1%.*}.png
+gnuplot -e "infile=\"$1\"" -e "outfile=\"$svg_target\"" share/plot-concurrency.gnu
 
-echo Output written as $target
+echo SVG output written as $svg_target
+
+inkscape -e $png_target $svg_target
+convert $png_target -background white -alpha remove -alpha off $png_target
+
+echo PNG output written as $png_target
