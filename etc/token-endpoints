@@ -1,0 +1,4 @@
+NEBRASKA       xrootd-D/HDFS   -  https://red-gridftp1.unl.edu:1094/user/dteam
+CERN-EOSPPS    EOS             -  https://eospps.cern.ch:443/eos/opstest/tpc/https
+DESY-PROM-DCA  dCache          -  https://prometheus.desy.de:2443/VOs/dteam
+PRAGUELCG2-DPM DPM             -  https://golias100.farm.particle.cz:443/dpm/farm.particle.cz/home/dteam

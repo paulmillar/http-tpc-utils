@@ -1,0 +1,6 @@
+NEBRASKA       xrootd-D/HDFS   -  https://red-gridftp1.unl.edu:1094/user/dteam
+CERN-EOSPPS    EOS             -  https://eospps.cern.ch:443/eos/opstest/tpc/https
+DESY-PROM-DCA  dCache          -  https://prometheus.desy.de:2443/VOs/wlcg
+INFN-T1-STO    SToRM           -  https://xfer.cr.cnaf.infn.it:8443/wlcg
+PRAGUELCG2-DPM DPM             -  https://golias100.farm.particle.cz:443/dpm/farm.particle.cz/home/wlcg
+MANCHESTER     DPM             -  https://vm33.in.tier2.hep.manchester.ac.uk/dpm/tier2.hep.manchester.ac.uk/home/wlcg

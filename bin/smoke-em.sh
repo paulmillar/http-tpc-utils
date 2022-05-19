@@ -26,20 +26,29 @@ CLEAR_LINE="\e[2K"
 
 SOUND_ENDPOINT_RE="successful (100%)"
 
+ENDPOINTS=$BASE/etc/endpoints
+
 OUTPUT_DESCRIPTION="stdout"
 QUIET=0
-while getopts "h?s:m:xp:qS:" opt; do
+VO="dteam"
+while getopts "h?e:s:m:xo:p:qv:S:" opt; do
     case "$opt" in
         h|\?)
-            echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>] [-S <file>]"
+            echo "$0 -x [-s <addr> [-m <mailer>]] [-p <file>] [-S <file>] [-o <name>]"
             echo
+            echo "    -e <file>    endpoint file (defaults to etc/endpoints)"
             echo "    -s <addr>    send report as an email to <addr>"
             echo "    -m <mailer>  use 'mail' or 'thunderbird' to send email"
             echo "    -x           use extended tests, if supported"
             echo "    -p <file>    use <file> for persistent state"
             echo "    -q           limit output to errors and prompts"
+            echo "    -v <VO>      specify the VO to use for the tests"
             echo "    -S <file>    skip endpoints listed in <file>"
+            echo "    -o <name>    use token auth from oidc-agent account <name>"
             exit 0
+            ;;
+        e)
+            ENDPOINTS="$OPTARG"
             ;;
         s)
             sendEmail="$OPTARG"
@@ -51,11 +60,17 @@ while getopts "h?s:m:xp:qS:" opt; do
         x)
             EXTENDED_TESTS=1
             ;;
+        o)
+            OIDC_AGENT_ACCOUNT="$OPTARG"
+            ;;
         p)
             persistentState="$OPTARG"
             ;;
         q)
             QUIET=1
+            ;;
+        v)
+            VO="$OPTARG"
             ;;
         S)
             MANUAL_SKIP_FILE="$OPTARG"
@@ -186,10 +201,9 @@ runTests() {
 
     STARTED_AT=$(date +%s)
 
-
-    TOTAL=$(wc -l $BASE/etc/endpoints|awk '{print $1}')
+    TOTAL=$(wc -l $ENDPOINTS|awk '{print $1}')
     COUNT=0
-    cat $BASE/etc/endpoints | while read name type workarounds url; do
+    cat $ENDPOINTS | while read name type workarounds url; do
         if [ $EXTENDED_TESTS -eq 1 ]; then
             case $type in
                 dCache|DPM|StoRM)
@@ -201,6 +215,14 @@ runTests() {
             esac
         else
             options="-f"
+        fi
+
+        if [ ! -z "$OIDC_AGENT_ACCOUNT" ]; then
+            options="$options -t wlcg -o $OIDC_AGENT_ACCOUNT"
+        fi
+
+        if [ ! -z "$VO" ]; then
+            options="$options -v $VO"
         fi
 
         if [[ "$workarounds" == *L* ]]; then
@@ -418,7 +440,7 @@ sendEmail() { # $1 - email address, $2 - subject
 
 voms-proxy-info -e >/dev/null 2>&1 || fatal "Need valid X.509 proxy"
 voms-proxy-info -e -hours 1 >/dev/null 2>&1 || fatal "X.509 proxy expires too soon"
-voms-proxy-info --acexists dteam 2>/dev/null || fatal "X.509 proxy does not assert dteam membership"
+voms-proxy-info --acexists $VO 2>/dev/null || fatal "X.509 proxy does not assert $VO membership"
 
 loadManualSkipped
 downloadGocDbDowntimeInfo
